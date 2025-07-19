@@ -86,23 +86,23 @@ before-build = [
 # macOS特定配置
 [tool.cibuildwheel.macos]
 archs = ["x86_64", "arm64"]
+
+[tool.cibuildwheel.macos.environment]
+CC = "clang"
+CXX = "clang++"
+FC = "/opt/homebrew/bin/gfortran"
+FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
+PKG_CONFIG_PATH = "/opt/homebrew/lib/pkgconfig"
+LDFLAGS = "-L/opt/homebrew/lib -Wl,-rpath,/opt/homebrew/lib"
+CPPFLAGS = "-I/opt/homebrew/include"
+
 before-build = [
     "echo 'Building macOS wheels with runtime MPI detection'",
-    "brew --prefix",
-    "export HOMEBREW_PREFIX=$(brew --prefix)",
-    "export FC=\"$HOMEBREW_PREFIX/bin/gfortran\"",
-    "echo 'Using system clang for C/C++ compilation'",
-    "export CC=\"clang\"", 
-    "export CXX=\"clang++\"",
-    "export FFLAGS=\"-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch\"",
-    "export PKG_CONFIG_PATH=\"$HOMEBREW_PREFIX/lib/pkgconfig\"",
-    "export LDFLAGS=\"-L$HOMEBREW_PREFIX/lib -Wl,-rpath,$HOMEBREW_PREFIX/lib\"",
-    "export CPPFLAGS=\"-I$HOMEBREW_PREFIX/include\"",
     "echo 'Compiler versions:'",
-    "which gfortran && gfortran --version | head -n1",
     "which clang && clang --version | head -n1",
+    "which gfortran && gfortran --version | head -n1", 
     "echo 'Available libraries:'",
-    "ls -la $HOMEBREW_PREFIX/lib/ | grep -E '(blas|arpack)' || true"
+    "ls -la /opt/homebrew/lib/ | grep -E '(blas|arpack)' || true"
 ]
 
 # Windows特定配置
