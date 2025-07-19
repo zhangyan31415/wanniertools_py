@@ -240,16 +240,31 @@ if blas_dep.found()
   message('Found BLAS via dependency()')
   math_deps += [blas_dep]
 else
-  message('BLAS not found via dependency(), will try manual linking')
-  link_args += ['-lopenblas']
+  message('BLAS not found via dependency(), will try platform-specific manual linking')
+  if build_machine.system() == 'darwin'
+    message('macOS: Using Accelerate framework for BLAS')
+    link_args += ['-framework', 'Accelerate']
+  elif build_machine.system() == 'linux'
+    message('Linux: Trying openblas')
+    link_args += ['-lopenblas']
+  elif build_machine.system() == 'windows'
+    message('Windows: Trying openblas')
+    link_args += ['-lopenblas']
+  endif
 endif
 
 if lapack_dep.found()
   message('Found LAPACK via dependency()')
   math_deps += [lapack_dep]
 else
-  message('LAPACK not found via dependency(), will try manual linking') 
-  #link_args += ['-llapack']
+  message('LAPACK not found via dependency(), checking platform-specific options') 
+  if build_machine.system() == 'darwin'
+    message('macOS: LAPACK included in Accelerate framework')
+    # Already linked via Accelerate framework above
+  else
+    message('Non-macOS: LAPACK linking disabled to avoid conflicts')
+    # Don't add -llapack to avoid conflicts
+  endif
 endif
 
 if arpack_dep.found()
