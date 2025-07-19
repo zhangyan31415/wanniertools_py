@@ -86,16 +86,7 @@ before-build = [
 # macOS特定配置
 [tool.cibuildwheel.macos]
 archs = ["x86_64", "arm64"]
-
-[tool.cibuildwheel.macos.environment]
-CC = "clang"
-CXX = "clang++"
-FC = "/opt/homebrew/bin/gfortran"
-FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
-PKG_CONFIG_PATH = "/opt/homebrew/lib/pkgconfig"
-LDFLAGS = "-L/opt/homebrew/lib -Wl,-rpath,/opt/homebrew/lib"
-CPPFLAGS = "-I/opt/homebrew/include"
-
+environment = { CC = "clang", CXX = "clang++", FC = "/opt/homebrew/bin/gfortran", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", PKG_CONFIG_PATH = "/opt/homebrew/lib/pkgconfig", LDFLAGS = "-L/opt/homebrew/lib -Wl,-rpath,/opt/homebrew/lib", CPPFLAGS = "-I/opt/homebrew/include" }
 before-build = [
     "echo 'Building macOS wheels with runtime MPI detection'",
     "echo 'Compiler versions:'",
