@@ -64,7 +64,7 @@ skip = ["pp*", "*musllinux*"]
 
 # 测试设置
 test-command = [
-    "python -c 'import wannier_tools; print(\"✅ Import successful\")'",
+    "python -c 'import wannier_tools; print(\"Import successful\")'",
     "python -c 'import wannier_tools; print(\"Version:\", wannier_tools.__version__)'",
     "wt-check-deps"
 ]
