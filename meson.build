@@ -44,7 +44,6 @@ sources = files(
   'src/wannier_tools/_fortran_src/effective_mass.f90',
   'src/wannier_tools/_fortran_src/eigen.f90',
   'src/wannier_tools/_fortran_src/ekb_ribbon.f90',
-  'src/wannier_tools/_fortran_src/ek_bulk2D.f90',
   'src/wannier_tools/_fortran_src/ek_bulk.f90',
   'src/wannier_tools/_fortran_src/ek_bulk_polar.f90',
   'src/wannier_tools/_fortran_src/ek_ribbon.f90',
@@ -248,8 +247,8 @@ else
     message('Linux: Trying openblas')
     link_args += ['-lopenblas']
   elif build_machine.system() == 'windows'
-    message('Windows: Trying openblas')
-    link_args += ['-lopenblas']
+    message('Windows: BLAS linking disabled to avoid missing library errors')
+    # Don't add -lopenblas as it's often not available on Windows
   endif
 endif
 
