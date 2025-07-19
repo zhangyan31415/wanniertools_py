@@ -86,22 +86,21 @@ before-build = [
 # macOS特定配置
 [tool.cibuildwheel.macos]
 archs = ["x86_64", "arm64"]
-environment = {
-    FC = "$(brew --prefix)/bin/gfortran",
-    CC = "$(brew --prefix)/bin/gcc", 
-    CXX = "$(brew --prefix)/bin/g++",
-    FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch",
-    PKG_CONFIG_PATH = "$(brew --prefix)/lib/pkgconfig",
-    LDFLAGS = "-L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib",
-    CPPFLAGS = "-I$(brew --prefix)/include"
-}
 before-build = [
     "echo 'Building macOS wheels with runtime MPI detection'",
     "brew --prefix",
+    "export HOMEBREW_PREFIX=$(brew --prefix)",
+    "export FC=\"$HOMEBREW_PREFIX/bin/gfortran\"",
+    "export CC=\"$HOMEBREW_PREFIX/bin/gcc\"", 
+    "export CXX=\"$HOMEBREW_PREFIX/bin/g++\"",
+    "export FFLAGS=\"-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch\"",
+    "export PKG_CONFIG_PATH=\"$HOMEBREW_PREFIX/lib/pkgconfig\"",
+    "export LDFLAGS=\"-L$HOMEBREW_PREFIX/lib -Wl,-rpath,$HOMEBREW_PREFIX/lib\"",
+    "export CPPFLAGS=\"-I$HOMEBREW_PREFIX/include\"",
     "which gfortran || echo 'gfortran not found'",
     "gfortran --version || echo 'gfortran version check failed'",
     "echo 'Available libraries:'",
-    "ls -la $(brew --prefix)/lib/ | grep -E '(blas|arpack)' || true"
+    "ls -la $HOMEBREW_PREFIX/lib/ | grep -E '(blas|arpack)' || true"
 ]
 
 # Windows特定配置
