@@ -70,13 +70,13 @@ test-command = [
 ]
 test-requires = ["pytest"]
 
-# 全平台环境变量
-environment = { FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch" }
+# 环境变量在各平台特定配置中设置
 
 # Linux特定配置
 [tool.cibuildwheel.linux]
 archs = ["x86_64"]
 manylinux-x86_64-image = "wanniertools-builder-nompi"
+environment = { FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch" }
 before-build = [
     "echo 'Building Linux wheels with runtime MPI detection'",
     "echo 'Available Python versions:'",
@@ -88,18 +88,19 @@ before-build = [
 archs = ["x86_64", "arm64"]
 before-build = [
     "echo 'Building macOS wheels with runtime MPI detection'",
-    "export HOMEBREW_PREFIX=$(brew --prefix)",
-    "export PKG_CONFIG_PATH=\"$HOMEBREW_PREFIX/lib/pkgconfig\"",
-    "export LDFLAGS=\"-L$HOMEBREW_PREFIX/lib -Wl,-rpath,$HOMEBREW_PREFIX/lib\"",
-    "export CPPFLAGS=\"-I$HOMEBREW_PREFIX/include\"",
-    "echo 'Homebrew prefix:' $HOMEBREW_PREFIX",
+    "brew --prefix",
+    "export FFLAGS='-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch'",
+    "export PKG_CONFIG_PATH=\"$(brew --prefix)/lib/pkgconfig\"",
+    "export LDFLAGS=\"-L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib\"",
+    "export CPPFLAGS=\"-I$(brew --prefix)/include\"",
     "echo 'Available libraries:'",
-    "ls -la $HOMEBREW_PREFIX/lib/ | grep -E '(blas|arpack)' || true"
+    "ls -la $(brew --prefix)/lib/ | grep -E '(blas|arpack)' || true"
 ]
 
 # Windows特定配置
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
+environment = { FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch" }
 before-build = [
     "echo 'Building Windows wheels with runtime MPI detection'"
 ] 

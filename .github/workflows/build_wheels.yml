@@ -47,49 +47,7 @@ jobs:
       
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.16.2
-        env:
-          # 构建设置 - 支持Python 3.8-3.12
-          CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
-          CIBW_SKIP: "pp* *musllinux*"
-          
-          # 环境变量
-          CIBW_ENVIRONMENT: >
-            FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
-          
-          # Linux 特定配置
-          CIBW_MANYLINUX_X86_64_IMAGE: wanniertools-builder-nompi
-          CIBW_BEFORE_BUILD_LINUX: |
-            echo "Building manylinux wheels with runtime MPI detection"
-            echo "Available Python versions:"
-            ls /opt/python/
-          
-          # macOS 特定配置
-          CIBW_ENVIRONMENT_MACOS: >
-            FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
-            PKG_CONFIG_PATH="$(brew --prefix)/lib/pkgconfig"
-            LDFLAGS="-L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
-            CPPFLAGS="-I$(brew --prefix)/include"
-          CIBW_BEFORE_BUILD_MACOS: |
-            echo "Building macOS wheels with runtime MPI detection"
-            echo "Homebrew prefix: $(brew --prefix)"
-            echo "Available libraries:"
-            ls -la "$(brew --prefix)/lib/" | grep -E "(blas|arpack)" || true
-          
-          # Windows 特定配置
-          CIBW_BEFORE_BUILD_WINDOWS: |
-            echo "Building Windows wheels with runtime MPI detection"
-            echo "Python version: %CIBW_BUILD%"
-          
-          # 测试配置
-          CIBW_TEST_COMMAND: |
-            python -c "import wannier_tools; print('✅ Import successful')"
-            python -c "import wannier_tools; print('Version:', wannier_tools.__version__)"
-            python -c "import wannier_tools.check_deps; wannier_tools.check_deps.main()" || echo "Dependency check completed"
-          
-          # 架构设置
-          CIBW_ARCHS_LINUX: x86_64
-          CIBW_ARCHS_MACOS: x86_64 arm64
-          CIBW_ARCHS_WINDOWS: AMD64
+        # 所有配置都在 pyproject.toml 中，不在这里设置环境变量
       
       - name: Upload wheels
         uses: actions/upload-artifact@v4
