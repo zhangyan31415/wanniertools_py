@@ -227,7 +227,7 @@ def print_installation_instructions():
 
 def main():
     """Main dependency checking function"""
-    print("🔍 Checking WannierTools dependencies...")
+    print("Checking WannierTools dependencies...")
     print("="*60)
     
     all_good = True
