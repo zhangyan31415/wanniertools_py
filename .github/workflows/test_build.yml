@@ -1,0 +1,87 @@
+name: Test Build (Single Platform)
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to test'
+        required: true
+        default: 'ubuntu-latest'
+        type: choice
+        options:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+      python_version:
+        description: 'Python version'
+        required: true
+        default: 'cp39'
+        type: choice
+        options:
+          - cp39
+          - cp310
+          - cp311
+          - cp312
+
+jobs:
+  test_build:
+    name: Test build on ${{ inputs.platform }}
+    runs-on: ${{ inputs.platform }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      # Linux: 构建 Docker 镜像
+      - name: Build Docker image (Linux)
+        if: inputs.platform == 'ubuntu-latest'
+        run: |
+          docker build -t wanniertools-builder-nompi -f Dockerfile.manylinux-nompi .
+      
+      # macOS: 安装依赖
+      - name: Install dependencies (macOS)
+        if: inputs.platform == 'macos-latest'
+        run: |
+          brew install gcc openblas arpack
+      
+      # Windows: 设置 MSVC
+      - name: Set up MSVC (Windows)
+        if: inputs.platform == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+      
+      - name: Build single wheel
+        uses: pypa/cibuildwheel@v2.16.2
+        env:
+          CIBW_BUILD: "${{ inputs.python_version }}-*"
+          CIBW_CONFIG_SETTINGS: "setup-args=-Dforce_no_mpi=true"
+          CIBW_ENVIRONMENT: FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none"
+          
+          # Linux 配置
+          CIBW_MANYLINUX_X86_64_IMAGE: wanniertools-builder-nompi
+          
+          # macOS 配置
+          CIBW_ENVIRONMENT_MACOS: >
+            FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none"
+            PKG_CONFIG_PATH="$(brew --prefix)/lib/pkgconfig"
+            LDFLAGS="-L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
+            CPPFLAGS="-I$(brew --prefix)/include"
+          
+          # 测试命令
+          CIBW_TEST_COMMAND: |
+            python -c "import wannier_tools; print('Version:', wannier_tools.__version__)"
+      
+      - name: Upload test wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-wheel-${{ inputs.platform }}-${{ inputs.python_version }}
+          path: ./wheelhouse/*.whl
+      
+      - name: Show build results
+        run: |
+          echo "Built wheels:"
+          ls -la ./wheelhouse/ 

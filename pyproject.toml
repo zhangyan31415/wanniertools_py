@@ -1,0 +1,105 @@
+[build-system]
+requires = [
+    "setuptools", 
+    "wheel", 
+    "numpy", 
+    "meson>=0.64.0",        #build-time only
+    "ninja",                #build-time only
+    "meson-python>=0.13.0"  #build-time only
+]
+build-backend = "mesonpy"
+
+[project]
+name = "wannier-tools"
+version = "2.7.1"
+description = "WannierTools: An open-source software package for novel topological materials"
+authors = [
+    { name = "QuanSheng Wu", email = "wuquansheng@gmail.com" },
+    { name = "ShengNan Zhang" },
+    { name = "Hai-Feng Song" },
+    { name = "Matthias Troyer" },
+    { name = "Alexey A. Soluyanov" },
+]
+license = { text = "GPL-3.0-or-later" }
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.20.0",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Fortran",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.scripts]
+wt-py = "wannier_tools.cli:main"
+wt-check-deps = "wannier_tools.check_deps:main"
+
+[project.urls]
+Homepage = "https://www.wanniertools.com/"
+"Bug Tracker" = "https://github.com/quanshengwu/wannier_tools/issues"
+
+[tool.meson-python.args]
+install = ["--tags=python-runtime,extension,devel"]
+
+# cibuildwheel配置
+[tool.cibuildwheel]
+# 构建哪些版本
+build = ["cp38-*", "cp39-*", "cp310-*", "cp311-*", "cp312-*"]
+# 跳过哪些版本
+skip = ["pp*", "*musllinux*"]
+
+# 测试设置
+test-command = [
+    "python -c 'import wannier_tools; print(\"✅ Import successful\")'",
+    "python -c 'import wannier_tools; print(\"Version:\", wannier_tools.__version__)'",
+    "wt-check-deps"
+]
+test-requires = ["pytest"]
+
+# 全平台环境变量
+environment = { FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch" }
+
+# Linux特定配置
+[tool.cibuildwheel.linux]
+archs = ["x86_64"]
+manylinux-x86_64-image = "wanniertools-builder-nompi"
+before-build = [
+    "echo 'Building Linux wheels with runtime MPI detection'",
+    "echo 'Available Python versions:'",
+    "ls /opt/python/"
+]
+
+# macOS特定配置
+[tool.cibuildwheel.macos]
+archs = ["x86_64", "arm64"]
+before-build = [
+    "echo 'Building macOS wheels with runtime MPI detection'",
+    "export HOMEBREW_PREFIX=$(brew --prefix)",
+    "export PKG_CONFIG_PATH=\"$HOMEBREW_PREFIX/lib/pkgconfig\"",
+    "export LDFLAGS=\"-L$HOMEBREW_PREFIX/lib -Wl,-rpath,$HOMEBREW_PREFIX/lib\"",
+    "export CPPFLAGS=\"-I$HOMEBREW_PREFIX/include\"",
+    "echo 'Homebrew prefix:' $HOMEBREW_PREFIX",
+    "echo 'Available libraries:'",
+    "ls -la $HOMEBREW_PREFIX/lib/ | grep -E '(blas|arpack)' || true"
+]
+
+# Windows特定配置
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]
+before-build = [
+    "echo 'Building Windows wheels with runtime MPI detection'"
+] 

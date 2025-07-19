@@ -1,0 +1,14 @@
+=== MPI Test for WannierTools ===
+Nodes: 2
+Tasks per node: 20
+Total tasks: 40
+Node list: gpuh[201-202]
+=== Running MPI WannierTools ===
+Successfully loaded wannier_tools_ext extension module.
+Changing working directory to: /data/work/zy/software/wanniertools/wannier_tools_pip/wannier_tools/examples/Haldane_model
+Calling the Fortran `run_wannier_tools` subroutine...
+Fortran subroutine finished.
+Restoring original working directory: /data/work/zy/software/wanniertools/wannier_tools_pip/wannier_tools/examples/Haldane_model
+=== Results ===
+ You are using    40 CPU cores
+ You are using : TB     model
