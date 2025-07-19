@@ -247,9 +247,9 @@ else
     message('Linux: Trying openblas')
     link_args += ['-lopenblas']
   elif build_machine.system() == 'windows'
-    message('Windows: Trying standard BLAS/LAPACK libraries')
-    # Use standard BLAS/LAPACK libraries available in MinGW
-    link_args += ['-lblas', '-llapack']
+    message('Windows: Trying OpenBLAS from MSYS2')
+    # Add MSYS2 library path and use OpenBLAS
+    link_args += ['-LC:/msys64/mingw64/lib', '-lopenblas']
   endif
 endif
 
@@ -262,8 +262,8 @@ else
     message('macOS: LAPACK included in Accelerate framework')
     # Already linked via Accelerate framework above
   elif build_machine.system() == 'windows'
-    message('Windows: LAPACK already linked with BLAS above')
-    # Already added -llapack in BLAS fallback section
+    message('Windows: LAPACK included in OpenBLAS')
+    # OpenBLAS includes LAPACK functionality, no separate linking needed
   else
     message('Linux: LAPACK linking disabled to avoid conflicts')
     # Don't add -llapack to avoid conflicts on Linux

@@ -102,9 +102,13 @@ archs = ["AMD64"]
 environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch" }
 before-build = [
     "echo Building Windows wheels with MinGW toolchain",
+    "echo Installing OpenBLAS via MSYS2...",
+    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-openblas || echo OpenBLAS installation failed, continuing without",
     "echo Compiler versions:",
     "gcc --version",
     "g++ --version", 
     "gfortran --version",
-    "echo Using consistent MinGW toolchain for all compilation and linking"
+    "echo Checking for BLAS libraries:",
+    "dir C:\\msys64\\mingw64\\lib\\*blas* || echo No BLAS libs found",
+    "dir C:\\msys64\\mingw64\\lib\\*lapack* || echo No LAPACK libs found"
 ] 
