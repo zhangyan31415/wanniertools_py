@@ -100,7 +100,6 @@ before-build = [
 # Windows特定配置
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
-environment = { FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch" }
 before-build = [
-    "echo 'Building Windows wheels with runtime MPI detection'"
+    "echo Building Windows wheels with runtime MPI detection"
 ] 

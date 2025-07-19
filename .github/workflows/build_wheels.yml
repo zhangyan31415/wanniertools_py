@@ -46,7 +46,9 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
       
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.16.2
+        uses: pypa/cibuildwheel@v2.21.3
+        with:
+          output-dir: wheelhouse
         # 所有配置都在 pyproject.toml 中，不在这里设置环境变量
       
       - name: Upload wheels
