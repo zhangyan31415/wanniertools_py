@@ -9,11 +9,20 @@ project('wannier-tools', 'fortran', 'c',
 
 # --- Compiler Detection ---
 c_compiler = meson.get_compiler('c')
+
+# Fortran compiler detection with better error handling
 fortran_compiler = meson.get_compiler('fortran')
 
 # Print compiler information for debugging  
 message('C compiler: ' + c_compiler.get_id() + ' (' + c_compiler.cmd_array()[0] + ')')
 message('Fortran compiler: ' + fortran_compiler.get_id() + ' (' + fortran_compiler.cmd_array()[0] + ')')
+
+# Check if we're in a cross-compilation environment
+if meson.is_cross_build()
+  message('Cross-compilation detected')
+  message('Host machine: ' + host_machine.system() + ' ' + host_machine.cpu_family())
+  message('Build machine: ' + build_machine.system() + ' ' + build_machine.cpu_family())
+endif
 
 py = import('python').find_installation(pure: false)
 py_dep = py.dependency()

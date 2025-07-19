@@ -39,6 +39,15 @@ jobs:
         run: |
           brew update
           brew install gcc openblas arpack
+          # 确保gfortran在PATH中
+          echo "$(brew --prefix)/bin" >> $GITHUB_PATH
+          # 设置编译器环境变量
+          echo "FC=$(brew --prefix)/bin/gfortran" >> $GITHUB_ENV
+          echo "CC=$(brew --prefix)/bin/gcc" >> $GITHUB_ENV
+          echo "CXX=$(brew --prefix)/bin/g++" >> $GITHUB_ENV
+          # 验证编译器安装
+          which gfortran
+          gfortran --version
       
       # Windows: 设置 Visual Studio
       - name: Set up MSVC (Windows)
