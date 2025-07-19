@@ -261,10 +261,16 @@ else
   # Don't add -larpack if we can't find it
 endif
 
-# For Windows, add additional system libraries
+# For Windows, add additional system libraries and ensure consistent toolchain
 if build_machine.system() == 'windows'
   if fortran_compiler.get_id().startswith('gcc')
+    message('Windows: Using MinGW/GCC toolchain')
     link_args += ['-lgfortran', '-lquadmath', '-lm']
+    # Ensure we use MinGW linker, not MSVC
+    if c_compiler.get_id() != 'gcc'
+      warning('Windows: C compiler is not GCC, this may cause linking issues')
+      warning('Consider setting CC=gcc and CXX=g++ for consistent toolchain')
+    endif
   endif
 endif
 

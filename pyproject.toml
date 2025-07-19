@@ -99,7 +99,12 @@ before-build = [
 # Windows特定配置
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
-environment = { FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch" }
+environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch" }
 before-build = [
-    "echo Building Windows wheels with runtime MPI detection"
+    "echo Building Windows wheels with MinGW toolchain",
+    "echo Compiler versions:",
+    "gcc --version",
+    "g++ --version", 
+    "gfortran --version",
+    "echo Using consistent MinGW toolchain for all compilation and linking"
 ] 
