@@ -64,28 +64,33 @@ jobs:
         env:
           # macOS: 让 cibuildwheel 分别构建每个架构，然后自动合并 universal2
           CIBW_ARCHS_MACOS: "x86_64 arm64"
-          CIBW_BEFORE_BUILD_MACOS: |
-            brew install gcc openblas arpack
-            echo "Homebrew prefix: $(brew --prefix)"
-            echo "Current architecture: $(uname -m)"
-            # 根据运行架构设置单一 -arch 标志，避免 meson-python 多架构错误
-            if [[ "$(uname -m)" == "arm64" ]]; then
-              export CFLAGS="-arch arm64"
-              export CXXFLAGS="-arch arm64"
-              export LDFLAGS="-arch arm64 -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
-              echo "Configured for ARM64"
-            else
-              export CFLAGS="-arch x86_64"
-              export CXXFLAGS="-arch x86_64"
-              export LDFLAGS="-arch x86_64 -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
-              echo "Configured for x86_64"
-            fi
-          CIBW_ENVIRONMENT_MACOS: >
+          # 架构特定的环境配置
+          CIBW_ENVIRONMENT_MACOS_ARM64: >
             CC=clang
             CXX=clang++
             FC=$(brew --prefix)/bin/gfortran
             MACOSX_DEPLOYMENT_TARGET=14.0
             FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
+            CFLAGS="-arch arm64"
+            CXXFLAGS="-arch arm64"
+            LDFLAGS="-arch arm64 -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
+            ARCHFLAGS="-arch arm64"
+          CIBW_ENVIRONMENT_MACOS_X86_64: >
+            CC=clang
+            CXX=clang++
+            FC=$(brew --prefix)/bin/gfortran
+            MACOSX_DEPLOYMENT_TARGET=14.0
+            FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
+            CFLAGS="-arch x86_64"
+            CXXFLAGS="-arch x86_64"
+            LDFLAGS="-arch x86_64 -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
+            ARCHFLAGS="-arch x86_64"
+          CIBW_BEFORE_BUILD_MACOS: |
+            brew install gcc openblas arpack
+            echo "Homebrew prefix: $(brew --prefix)"
+            echo "Host architecture: $(uname -m)"
+            echo "Target architecture: $CIBW_ARCHS"
+            echo "✅ Dependencies installed, architecture-specific flags set via environment"
       
       - name: Upload wheels
         uses: actions/upload-artifact@v4
