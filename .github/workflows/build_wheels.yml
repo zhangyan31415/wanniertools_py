@@ -66,35 +66,116 @@ jobs:
           name: wheels-${{ matrix.os }}
           path: ./wheelhouse/*.whl
   
-  test_installation:
-    name: Test wheel installation
+  test_linux:
+    name: Test Linux wheel
     needs: build_wheels
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ['3.9']  # Only test Python 3.9 since we only build cp39 wheels
+    runs-on: ubuntu-latest
+    if: always()  # Run even if some builds failed
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Download wheels for ${{ matrix.os }}
+      - name: Download Linux wheels
         uses: actions/download-artifact@v4
         with:
-          name: wheels-${{ matrix.os }}
+          name: wheels-ubuntu-latest
           path: ./wheels
+        continue-on-error: true
       
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.9
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: '3.9'
       
       - name: Install wheel
         shell: bash
         run: |
-          ls -la ./wheels/
-          pip install --find-links ./wheels wannier-tools
+          ls -la ./wheels/ || echo "No wheels found"
+          if [ "$(ls -A ./wheels/ 2>/dev/null)" ]; then
+            pip install --find-links ./wheels wannier-tools
+          else
+            echo "❌ No Linux wheels available - build may have failed"
+            exit 1
+          fi
+      
+      - name: Test basic functionality
+        run: |
+          python -c "import wannier_tools; print(f'[OK] wannier_tools {wannier_tools.__version__} imported successfully')"
+          python -c "import wannier_tools.check_deps; wannier_tools.check_deps.main()"
+          wt-check-deps
+
+  test_macos:
+    name: Test macOS wheel
+    needs: build_wheels
+    runs-on: macos-latest
+    if: always()  # Run even if some builds failed
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download macOS wheels
+        uses: actions/download-artifact@v4
+        with:
+          name: wheels-macos-latest
+          path: ./wheels
+        continue-on-error: true
+      
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Install wheel
+        shell: bash
+        run: |
+          ls -la ./wheels/ || echo "No wheels found"
+          if [ "$(ls -A ./wheels/ 2>/dev/null)" ]; then
+            pip install --find-links ./wheels wannier-tools
+          else
+            echo "❌ No macOS wheels available - build may have failed"
+            exit 1
+          fi
+      
+      - name: Test basic functionality
+        run: |
+          python -c "import wannier_tools; print(f'[OK] wannier_tools {wannier_tools.__version__} imported successfully')"
+          python -c "import wannier_tools.check_deps; wannier_tools.check_deps.main()"
+          wt-check-deps
+
+  test_windows:
+    name: Test Windows wheel
+    needs: build_wheels
+    runs-on: windows-latest
+    if: always()  # Run even if some builds failed
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download Windows wheels
+        uses: actions/download-artifact@v4
+        with:
+          name: wheels-windows-latest
+          path: ./wheels
+        continue-on-error: true
+      
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Install wheel
+        shell: bash
+        run: |
+          ls -la ./wheels/ || echo "No wheels found"
+          if [ "$(ls -A ./wheels/ 2>/dev/null)" ]; then
+            pip install --find-links ./wheels wannier-tools
+          else
+            echo "❌ No Windows wheels available - build may have failed"
+            exit 1
+          fi
       
       - name: Test basic functionality
         run: |
@@ -153,8 +234,9 @@ jobs:
   
   collect_wheels:
     name: Collect all wheels
-    needs: [build_wheels, test_installation]
+    needs: [build_wheels, test_linux, test_macos, test_windows]
     runs-on: ubuntu-latest
+    if: always()  # Run even if some tests failed
     
     steps:
       - name: Download all wheels

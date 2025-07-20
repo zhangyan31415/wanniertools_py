@@ -78,7 +78,7 @@ def check_fortran_compiler():
         # Check for system gfortran as fallback but warn
         system_gfortran = shutil.which('gfortran')
         if system_gfortran and not system_gfortran.startswith(conda_prefix):
-            print(f"⚠️  Found system gfortran: {system_gfortran}")
+            print(f"[WARN] Found system gfortran: {system_gfortran}")
             print("   Recommend installing conda gfortran: mamba install gfortran")
             return True
         
@@ -150,7 +150,7 @@ def check_system_libraries():
 
 def install_missing_dependencies():
     """Try to install missing dependencies automatically"""
-    print("\n🔧 Attempting to install missing dependencies...")
+    print("\n[INFO] Attempting to install missing dependencies...")
     
     # Check if we're in a conda/mamba environment
     conda_prefix = os.environ.get('CONDA_PREFIX')
@@ -158,7 +158,7 @@ def install_missing_dependencies():
         # Use mamba/conda to install system dependencies
         conda_cmd = 'mamba' if shutil.which('mamba') else 'conda'
         if shutil.which(conda_cmd):
-            print(f"📦 Using {conda_cmd} to install system dependencies...")
+            print(f"[INFO] Using {conda_cmd} to install system dependencies...")
             try:
                 # Install gfortran if missing
                 if not check_conda_gfortran():
@@ -199,15 +199,15 @@ def print_installation_instructions():
     conda_prefix = os.environ.get('CONDA_PREFIX')
     
     if conda_prefix:
-        print("\n🐍 For conda/mamba environment (Recommended):")
+        print("\n[CONDA] For conda/mamba environment (Recommended):")
         print("mamba install gfortran openblas arpack ninja")
         print("# or")
         print("conda install gfortran openblas arpack ninja")
     
-    print("\n🐍 For Python packages:")
+    print("\n[PIP] For Python packages:")
     print("pip install ninja")
     
-    print("\n🔧 For system dependencies:")
+    print("\n[SYSTEM] For system dependencies:")
     print("\n--- Conda/Mamba (Recommended) ---")
     print("mamba install gfortran openblas arpack")
     print("# or")
@@ -252,10 +252,10 @@ def main():
     print("\n" + "="*60)
     
     if all_good:
-        print("🎉 All dependencies are satisfied!")
+        print("[OK] All dependencies are satisfied!")
         return True
     else:
-        print("⚠️  Some dependencies are missing:")
+        print("[WARN] Some dependencies are missing:")
         for item in missing_critical:
             print(f"   - {item}")
         
@@ -267,7 +267,7 @@ def main():
                 return True
         
         print_installation_instructions()
-        print("\n💡 After installing dependencies, run 'wt-check-deps' again to verify.")
+        print("\n[NOTE] After installing dependencies, run 'wt-check-deps' again to verify.")
         return False
 
 if __name__ == "__main__":
