@@ -91,37 +91,39 @@ before-build = [
     "echo 'Building macOS wheels with runtime MPI detection'",
     "echo 'Target architecture: ${CIBW_ARCHS_MACOS:-unknown}'",
     "echo 'Build machine: $(uname -m)'",
-    # 架构特定配置 - 使用单行if语句
+    
+    # 安装依赖 - gcc提供gfortran，但C/C++用Clang
+    "brew install gcc openblas arpack",
+    
+    # 架构特定配置 - 使用Clang + FLAGS方式（推荐）
     "if [[ \"${CIBW_ARCHS_MACOS}\" == \"arm64\" ]]; then export BREW_PREFIX=/opt/homebrew && export ARCH_FLAGS=\"-arch arm64\" && echo 'Configuring for Apple Silicon (ARM64)'; elif [[ \"${CIBW_ARCHS_MACOS}\" == \"universal2\" ]]; then export BREW_PREFIX=/opt/homebrew && export ARCH_FLAGS=\"-arch arm64 -arch x86_64\" && echo 'Configuring for Universal Binary (ARM64 + x86_64)'; else export BREW_PREFIX=/usr/local && export ARCH_FLAGS=\"-arch x86_64\" && echo 'Configuring for Intel (x86_64)'; fi",
     "echo \"Using Homebrew prefix: $BREW_PREFIX\"",
     "echo \"Architecture flags: $ARCH_FLAGS\"",
-    # 安装编译器和库
-    "brew install gcc openblas arpack",
-    # 修复macOS ARM64上的gcc版本化问题 - 创建无版本别名
-    "echo 'Creating gcc aliases for Meson compatibility...'",
-    "GCC_VERSION=$(ls $BREW_PREFIX/bin/gcc-* | head -1 | sed 's/.*gcc-//')",
-    "echo \"Found GCC version: $GCC_VERSION\"",
-    "ln -sf $BREW_PREFIX/bin/gcc-$GCC_VERSION $BREW_PREFIX/bin/gcc",
-    "ln -sf $BREW_PREFIX/bin/gcc-ar-$GCC_VERSION $BREW_PREFIX/bin/gcc-ar",
-    "ln -sf $BREW_PREFIX/bin/gcc-nm-$GCC_VERSION $BREW_PREFIX/bin/gcc-nm",
-    "ln -sf $BREW_PREFIX/bin/gcc-ranlib-$GCC_VERSION $BREW_PREFIX/bin/gcc-ranlib",
-    "echo 'GCC aliases created:'",
-    "ls -la $BREW_PREFIX/bin/gcc $BREW_PREFIX/bin/gcc-ar || echo 'Alias creation may have failed'",
-    # 配置编译器环境变量
-    "export CC=\"clang $ARCH_FLAGS\"",
-    "export CXX=\"clang++ $ARCH_FLAGS\"", 
-    "export FC=\"$BREW_PREFIX/bin/gfortran $ARCH_FLAGS\"",
+    
+    # 设置编译器 - Clang for C/C++, gfortran for Fortran (干净的方式)
+    "export CC=clang",
+    "export CXX=clang++", 
+    "export FC=$BREW_PREFIX/bin/gfortran",
+    
+    # 将架构和路径选项放入FLAGS而不是编译器变量 (Meson最佳实践)
+    "export CFLAGS=\"$ARCH_FLAGS\"",
+    "export CXXFLAGS=\"$ARCH_FLAGS\"",
+    "export FFLAGS=\"$ARCH_FLAGS -fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch\"",
+    "export LDFLAGS=\"$ARCH_FLAGS -L$BREW_PREFIX/lib -Wl,-rpath,$BREW_PREFIX/lib\"",
+    "export CPPFLAGS=\"-I$BREW_PREFIX/include\"",
     "export PKG_CONFIG_PATH=\"$BREW_PREFIX/lib/pkgconfig:${PKG_CONFIG_PATH:-}\"",
-    "export LDFLAGS=\"-L$BREW_PREFIX/lib -Wl,-rpath,$BREW_PREFIX/lib $ARCH_FLAGS ${LDFLAGS:-}\"",
-    "export CPPFLAGS=\"-I$BREW_PREFIX/include ${CPPFLAGS:-}\"",
-    # 验证配置
-    "echo 'Compiler information:'",
-    "echo \"CC: $CC\" && echo \"CXX: $CXX\" && echo \"FC: $FC\"",
-    "which clang && clang --version | head -n1",
-    "which gfortran && gfortran --version | head -n1",
-    "echo 'Testing architecture-specific compilation:'",
-    "echo 'int main(){return 0;}' | $CC -x c - -o /tmp/test_$CIBW_ARCHS_MACOS && file /tmp/test_$CIBW_ARCHS_MACOS",
-    "echo 'Available libraries:' && ls -la $BREW_PREFIX/lib/ | grep -E '(blas|arpack|gfortran)' || echo 'Libraries not found'"
+    
+    # 验证编译器设置
+    "echo 'Compiler configuration:'",
+    "echo \"CC=$CC ($(which $CC))\"",
+    "echo \"CXX=$CXX ($(which $CXX))\"", 
+    "echo \"FC=$FC\"",
+    "echo \"CFLAGS=$CFLAGS\"",
+    "echo \"FFLAGS=$FFLAGS\"",
+    "$CC --version | head -1",
+    "$FC --version | head -1",
+    "echo 'Available libraries:'",
+    "ls -la $BREW_PREFIX/lib/ | grep -E '(blas|arpack|gfortran)' || echo 'Libraries not found'"
 ]
 
 # Windows特定配置
