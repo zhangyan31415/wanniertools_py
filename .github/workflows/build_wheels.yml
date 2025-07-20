@@ -65,67 +65,47 @@ jobs:
         env:
           # macOS: 让 cibuildwheel 分别构建每个架构，然后自动合并 universal2
           CIBW_ARCHS_MACOS: "x86_64 arm64"
-          # 设置macOS最低版本为14.0，匹配Homebrew gfortran要求
-          CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=14.0"
+          # 设置macOS最低版本，根据架构动态调整以兼容 Ventura
+          CIBW_ENVIRONMENT_MACOS: |
+            if [[ "$(uname -m)" == "arm64" ]]; then
+              MACOSX_DEPLOYMENT_TARGET=14.0
+            else
+              MACOSX_DEPLOYMENT_TARGET=13.0
+            fi
           CIBW_BEFORE_BUILD_MACOS: |
             brew install gcc openblas arpack
-            echo "Homebrew prefix: $(brew --prefix)"
             echo "Host architecture: $(uname -m)"
             echo "Target architecture: $CIBW_ARCHS"
             
-            # 设置基础编译器
+            # Set compilers consistently using brew prefix
             export CC=clang
             export CXX=clang++
-            export FC=$(brew --prefix)/bin/gfortran
-            export FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
+            export FC="$(brew --prefix)/bin/gfortran"
             
-            # 根据目标架构设置架构特定的标志
-            # cibuildwheel在不同架构构建时设置不同的路径和环境
-            echo "CIBW_ARCHS value: '$CIBW_ARCHS'"
-            echo "VIRTUAL_ENV: $VIRTUAL_ENV"
-            echo "Current working directory: $(pwd)"
-            
-            # 从VIRTUAL_ENV路径中提取架构信息 (更可靠的方法)
-            if [[ "$VIRTUAL_ENV" == *"arm64"* ]]; then
-              TARGET_ARCH="arm64"
-            elif [[ "$VIRTUAL_ENV" == *"x86_64"* ]]; then
-              TARGET_ARCH="x86_64"
-            else
-              echo "❌ Cannot determine target architecture from environment"
-              echo "VIRTUAL_ENV: $VIRTUAL_ENV"
-              echo "Available env vars:"
-              env | grep -i cibw || true
-              exit 1
-            fi
-            
-            echo "🎯 Detected target architecture: $TARGET_ARCH"
-            
-            if [[ "$TARGET_ARCH" == "arm64" ]]; then
+            # Use cibuildwheel's official $CIBW_ARCHS variable for reliable detection
+            if [[ "$CIBW_ARCHS" == "arm64" ]]; then
               export CFLAGS="-arch arm64"
-              export CXXFLAGS="-arch arm64"
-              export LDFLAGS="-arch arm64 -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
-              export ARCHFLAGS="-arch arm64"
+              export LDFLAGS="-arch arm64 -L$(brew --prefix)/lib"
               echo "✅ Configured for ARM64 target"
-            elif [[ "$TARGET_ARCH" == "x86_64" ]]; then
+            elif [[ "$CIBW_ARCHS" == "x86_64" ]]; then
               export CFLAGS="-arch x86_64"
-              export CXXFLAGS="-arch x86_64"
-              export LDFLAGS="-arch x86_64 -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
-              export ARCHFLAGS="-arch x86_64"
+              export LDFLAGS="-arch x86_64 -L$(brew --prefix)/lib"
               echo "✅ Configured for x86_64 target"
             else
-              echo "❌ Unknown architecture: $TARGET_ARCH"
+              echo "❌ Unknown architecture: '$CIBW_ARCHS'"
               exit 1
             fi
             
-            echo "Final compiler configuration:"
+            # Set shared compiler flags
+            export CXXFLAGS="$CFLAGS"
+            export ARCHFLAGS="$CFLAGS"
+            
+            echo "Final compiler flags:"
             echo "CC=$CC"
             echo "CXX=$CXX"
             echo "FC=$FC"
             echo "CFLAGS=$CFLAGS"
-            echo "CXXFLAGS=$CXXFLAGS"
             echo "LDFLAGS=$LDFLAGS"
-            echo "ARCHFLAGS=$ARCHFLAGS"
-            echo "✅ Dependencies installed, architecture configured"
       
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -329,9 +309,9 @@ jobs:
           cd examples/Haldane_model
           echo "=== 测试单核运行 ==="
           
-          # 强化错误检测 - 单核测试
+          # 强化错误检测 - 单核测试 (使用 mpirun 保证MPI环境)
           set +e
-          wt_output=$(wt-py 2>&1)
+          wt_output=$(mpirun --oversubscribe -np 1 wt-py 2>&1)
           wt_exit_code=$?
           set -e
           
