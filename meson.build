@@ -129,7 +129,7 @@ if build_machine.system() == 'windows'
     check: false).returncode() == 0
     
   if mpi_h_exists and mpi_lib_exists
-    message('✅ MSYS2 gfortran-compatible MPI found')
+    message('[OK] MSYS2 gfortran-compatible MPI found')
     message('   Headers: ' + msys2_mpi_inc + '/mpi.h')
     message('   Library: ' + msys2_mpi_lib + '/libmsmpi.dll.a')
     
@@ -137,11 +137,11 @@ if build_machine.system() == 'windows'
     mpi_dep = declare_dependency(
       include_directories: include_directories(msys2_mpi_inc),
       dependencies: [
-        cc.find_library('msmpi', dirs: msys2_mpi_lib, required: true)
+        c_compiler.find_library('msmpi', dirs: msys2_mpi_lib, required: true)
       ],
       compile_args: ['-DHAVE_MPI']
     )
-    message('✅ Hybrid gfortran+MS-MPI compatibility configured successfully')
+    message('[OK] Hybrid gfortran+MS-MPI compatibility configured successfully')
     message('   Build: gfortran + MSYS2 libs (ABI consistent)')
     message('   Runtime: Official MS-MPI mpiexec.exe (from separate installation)')
   else
