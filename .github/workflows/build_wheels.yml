@@ -80,24 +80,40 @@ jobs:
             export FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
             
             # 根据目标架构设置架构特定的标志
-            # 使用CIBW_ARCHS来判断当前正在构建的架构
+            # cibuildwheel在不同架构构建时设置不同的路径和环境
             echo "CIBW_ARCHS value: '$CIBW_ARCHS'"
-            if [[ "$CIBW_ARCHS" == "arm64" ]]; then
+            echo "VIRTUAL_ENV: $VIRTUAL_ENV"
+            echo "Current working directory: $(pwd)"
+            
+            # 从VIRTUAL_ENV路径中提取架构信息 (更可靠的方法)
+            if [[ "$VIRTUAL_ENV" == *"arm64"* ]]; then
+              TARGET_ARCH="arm64"
+            elif [[ "$VIRTUAL_ENV" == *"x86_64"* ]]; then
+              TARGET_ARCH="x86_64"
+            else
+              echo "❌ Cannot determine target architecture from environment"
+              echo "VIRTUAL_ENV: $VIRTUAL_ENV"
+              echo "Available env vars:"
+              env | grep -i cibw || true
+              exit 1
+            fi
+            
+            echo "🎯 Detected target architecture: $TARGET_ARCH"
+            
+            if [[ "$TARGET_ARCH" == "arm64" ]]; then
               export CFLAGS="-arch arm64"
               export CXXFLAGS="-arch arm64"
               export LDFLAGS="-arch arm64 -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
               export ARCHFLAGS="-arch arm64"
               echo "✅ Configured for ARM64 target"
-            elif [[ "$CIBW_ARCHS" == "x86_64" ]]; then
+            elif [[ "$TARGET_ARCH" == "x86_64" ]]; then
               export CFLAGS="-arch x86_64"
               export CXXFLAGS="-arch x86_64"
               export LDFLAGS="-arch x86_64 -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
               export ARCHFLAGS="-arch x86_64"
               echo "✅ Configured for x86_64 target"
             else
-              echo "❌ Unknown architecture: $CIBW_ARCHS"
-              echo "Available env vars:"
-              env | grep -i cibw || true
+              echo "❌ Unknown architecture: $TARGET_ARCH"
               exit 1
             fi
             
