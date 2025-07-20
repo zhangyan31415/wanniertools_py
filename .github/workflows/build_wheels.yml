@@ -115,18 +115,32 @@ jobs:
           
           cd examples/Haldane_model
           echo "=== 测试单核运行 ==="
-          timeout 60 wt-py || echo "单核测试完成(timeout)"
+          if ! timeout 60 wt-py; then
+            echo "❌ Linux单核测试失败"
+            exit 1
+          fi
+          
           if [ -f WT.out ]; then
             cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
             echo "单核结果: $cores"
+          else
+            echo "❌ 未生成WT.out文件"
+            exit 1
           fi
           
           echo "=== 测试双核并行 ==="
           rm -f WT.out  # 清理之前的输出
-          timeout 60 mpirun --oversubscribe -np 2 wt-py || echo "双核测试完成(timeout)"
+          if ! timeout 60 mpirun --oversubscribe -np 2 wt-py; then
+            echo "❌ Linux双核测试失败"
+            exit 1
+          fi
+          
           if [ -f WT.out ]; then
             cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
             echo "双核结果: $cores"
+          else
+            echo "❌ 双核测试未生成WT.out文件"
+            exit 1
           fi
 
   test_macos:
@@ -176,18 +190,34 @@ jobs:
           
           cd examples/Haldane_model
           echo "=== 测试单核运行 ==="
-          timeout 60 wt-py || echo "单核测试完成(timeout)"
+          # macOS没有timeout命令，直接运行
+          if ! wt-py; then
+            echo "❌ macOS单核测试失败"
+            exit 1
+          fi
+          
           if [ -f WT.out ]; then
             cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
             echo "单核结果: $cores"
+          else
+            echo "❌ 未生成WT.out文件"
+            exit 1
           fi
           
           echo "=== 测试双核并行 ==="
           rm -f WT.out  # 清理之前的输出
-          timeout 60 mpirun --oversubscribe -np 2 wt-py || echo "双核测试完成(timeout)"
+          # macOS没有timeout命令，直接运行
+          if ! mpirun --oversubscribe -np 2 wt-py; then
+            echo "❌ macOS双核测试失败"
+            exit 1
+          fi
+          
           if [ -f WT.out ]; then
             cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
             echo "双核结果: $cores"
+          else
+            echo "❌ 双核测试未生成WT.out文件"
+            exit 1
           fi
 
   test_windows:
@@ -237,10 +267,19 @@ jobs:
           
           cd examples/Haldane_model
           echo "=== 测试单核运行 ==="
-          timeout 60 wt-py || echo "单核测试完成(timeout)"
+          # Windows bash可能没有timeout命令，直接运行
+          # 如果出现DLL错误，测试应该失败
+          if ! wt-py; then
+            echo "❌ Windows单核测试失败"
+            exit 1
+          fi
+          
           if [ -f WT.out ]; then
             cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
             echo "单核结果: $cores"
+          else
+            echo "❌ 未生成WT.out文件"
+            exit 1
           fi
           
           echo "=== Windows暂时跳过多核测试（需要MS-MPI安装） ==="
@@ -249,7 +288,8 @@ jobs:
     name: Collect all wheels
     needs: [build_wheels, test_linux, test_macos, test_windows]
     runs-on: ubuntu-latest
-    if: always()  # Run even if some tests failed
+    # 只有当所有构建和测试都成功时才收集wheels
+    if: success()
     
     steps:
       - name: Download all wheels

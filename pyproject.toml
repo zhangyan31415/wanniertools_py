@@ -85,14 +85,31 @@ before-build = [
 # macOS特定配置
 [tool.cibuildwheel.macos]
 archs = ["x86_64", "arm64"]
-environment = { CC = "clang", CXX = "clang++", FC = "/opt/homebrew/bin/gfortran", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", PKG_CONFIG_PATH = "/opt/homebrew/lib/pkgconfig", LDFLAGS = "-L/opt/homebrew/lib -Wl,-rpath,/opt/homebrew/lib", CPPFLAGS = "-I/opt/homebrew/include", MACOSX_DEPLOYMENT_TARGET = "14.0", WANNIERTOOLS_RUNTIME_MPI_ONLY = "true" }
+# 通用环境变量，路径将在before-build中动态设置
+environment = { CC = "clang", CXX = "clang++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", MACOSX_DEPLOYMENT_TARGET = "14.0", WANNIERTOOLS_RUNTIME_MPI_ONLY = "true" }
 before-build = [
     "echo 'Building macOS wheels with runtime MPI detection'",
-    "echo 'Compiler versions:'",
+    "echo 'Target architecture: ${CIBW_ARCHS_MACOS:-unknown}'",
+    "echo 'Build machine: $(uname -m)'",
+    # 检测Homebrew路径并写入环境文件
+    "if [ -d /opt/homebrew ]; then BREW_PREFIX=/opt/homebrew; else BREW_PREFIX=/usr/local; fi",
+    "echo \"Using Homebrew prefix: $BREW_PREFIX\"",
+    # 创建环境设置文件
+    "echo \"export FC=$BREW_PREFIX/bin/gfortran\" > /tmp/macos_build_env.sh",
+    "echo \"export PKG_CONFIG_PATH=$BREW_PREFIX/lib/pkgconfig:${PKG_CONFIG_PATH:-}\" >> /tmp/macos_build_env.sh",
+    "echo \"export LDFLAGS='-L$BREW_PREFIX/lib -Wl,-rpath,$BREW_PREFIX/lib ${LDFLAGS:-}'\" >> /tmp/macos_build_env.sh",
+    "echo \"export CPPFLAGS='-I$BREW_PREFIX/include ${CPPFLAGS:-}'\" >> /tmp/macos_build_env.sh",
+    # 应用环境设置
+    "source /tmp/macos_build_env.sh",
+    # 安装编译器
+    "brew install gcc",
+    "echo 'Compiler information:'",
     "which clang && clang --version | head -n1",
     "which gfortran && gfortran --version | head -n1", 
+    "echo 'Build environment:'",
+    "cat /tmp/macos_build_env.sh",
     "echo 'Available libraries:'",
-    "ls -la /opt/homebrew/lib/ | grep -E '(blas|arpack)' || true"
+    "ls -la $BREW_PREFIX/lib/ | grep -E '(blas|arpack)' || echo 'No BLAS/ARPACK found'"
 ]
 
 # Windows特定配置
