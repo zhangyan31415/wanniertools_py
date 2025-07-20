@@ -91,54 +91,27 @@ before-build = [
     "echo 'Building macOS wheels with runtime MPI detection'",
     "echo 'Target architecture: ${CIBW_ARCHS_MACOS:-unknown}'",
     "echo 'Build machine: $(uname -m)'",
-    
-    # 架构特定的Homebrew路径配置
-    """
-    if [[ "${CIBW_ARCHS_MACOS}" == "arm64" ]]; then
-      export BREW_PREFIX=/opt/homebrew
-      export ARCH_FLAGS="-arch arm64"
-      echo 'Configuring for Apple Silicon (ARM64)'
-    elif [[ "${CIBW_ARCHS_MACOS}" == "universal2" ]]; then
-      export BREW_PREFIX=/opt/homebrew
-      export ARCH_FLAGS="-arch arm64 -arch x86_64"
-      echo 'Configuring for Universal Binary (ARM64 + x86_64)'
-    else
-      export BREW_PREFIX=/usr/local
-      export ARCH_FLAGS="-arch x86_64"
-      echo 'Configuring for Intel (x86_64)'
-    fi
-    echo "Using Homebrew prefix: $BREW_PREFIX"
-    echo "Architecture flags: $ARCH_FLAGS"
-    """,
-    
+    # 架构特定配置 - 使用单行if语句
+    "if [[ \"${CIBW_ARCHS_MACOS}\" == \"arm64\" ]]; then export BREW_PREFIX=/opt/homebrew && export ARCH_FLAGS=\"-arch arm64\" && echo 'Configuring for Apple Silicon (ARM64)'; elif [[ \"${CIBW_ARCHS_MACOS}\" == \"universal2\" ]]; then export BREW_PREFIX=/opt/homebrew && export ARCH_FLAGS=\"-arch arm64 -arch x86_64\" && echo 'Configuring for Universal Binary (ARM64 + x86_64)'; else export BREW_PREFIX=/usr/local && export ARCH_FLAGS=\"-arch x86_64\" && echo 'Configuring for Intel (x86_64)'; fi",
+    "echo \"Using Homebrew prefix: $BREW_PREFIX\"",
+    "echo \"Architecture flags: $ARCH_FLAGS\"",
     # 安装编译器和库
     "brew install gcc openblas arpack",
-    
     # 配置编译器环境变量
-    """
-    export CC="clang $ARCH_FLAGS"
-    export CXX="clang++ $ARCH_FLAGS"
-    export FC="$BREW_PREFIX/bin/gfortran $ARCH_FLAGS"
-    export PKG_CONFIG_PATH="$BREW_PREFIX/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
-    export LDFLAGS="-L$BREW_PREFIX/lib -Wl,-rpath,$BREW_PREFIX/lib $ARCH_FLAGS ${LDFLAGS:-}"
-    export CPPFLAGS="-I$BREW_PREFIX/include ${CPPFLAGS:-}"
-    """,
-    
-    # 验证编译器配置和架构支持
-    """
-    echo 'Compiler information:'
-    echo "CC: $CC"
-    echo "CXX: $CXX"
-    echo "FC: $FC"
-    which clang && clang --version | head -n1
-    which gfortran && gfortran --version | head -n1
-    
-    echo 'Testing architecture-specific compilation:'
-    echo 'int main(){return 0;}' | $CC -x c - -o /tmp/test_$CIBW_ARCHS_MACOS && file /tmp/test_$CIBW_ARCHS_MACOS
-    
-    echo 'Available libraries:'
-    ls -la $BREW_PREFIX/lib/ | grep -E '(blas|arpack|gfortran)' || echo 'Libraries not found'
-    """
+    "export CC=\"clang $ARCH_FLAGS\"",
+    "export CXX=\"clang++ $ARCH_FLAGS\"", 
+    "export FC=\"$BREW_PREFIX/bin/gfortran $ARCH_FLAGS\"",
+    "export PKG_CONFIG_PATH=\"$BREW_PREFIX/lib/pkgconfig:${PKG_CONFIG_PATH:-}\"",
+    "export LDFLAGS=\"-L$BREW_PREFIX/lib -Wl,-rpath,$BREW_PREFIX/lib $ARCH_FLAGS ${LDFLAGS:-}\"",
+    "export CPPFLAGS=\"-I$BREW_PREFIX/include ${CPPFLAGS:-}\"",
+    # 验证配置
+    "echo 'Compiler information:'",
+    "echo \"CC: $CC\" && echo \"CXX: $CXX\" && echo \"FC: $FC\"",
+    "which clang && clang --version | head -n1",
+    "which gfortran && gfortran --version | head -n1",
+    "echo 'Testing architecture-specific compilation:'",
+    "echo 'int main(){return 0;}' | $CC -x c - -o /tmp/test_$CIBW_ARCHS_MACOS && file /tmp/test_$CIBW_ARCHS_MACOS",
+    "echo 'Available libraries:' && ls -la $BREW_PREFIX/lib/ | grep -E '(blas|arpack|gfortran)' || echo 'Libraries not found'"
 ]
 
 # Windows特定配置
