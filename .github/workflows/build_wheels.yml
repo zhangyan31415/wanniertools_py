@@ -73,7 +73,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.9']  # Only test Python 3.9 since we only build cp39 wheels
     
     steps:
       - name: Checkout code
@@ -92,6 +92,7 @@ jobs:
       
       - name: Install wheel
         run: |
+          ls -la ./wheels/
           pip install --find-links ./wheels wannier-tools
       
       - name: Test basic functionality
@@ -118,16 +119,17 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.9'  # Match the wheel Python version
       
       - name: Install MPI for testing
         run: |
           sudo apt-get update
-          sudo apt-get install -y openmpi-bin openmpi-dev libopenmpi3
+          sudo apt-get install -y openmpi-bin libopenmpi-dev libopenmpi3
           mpirun --version
       
       - name: Install wheel
         run: |
+          ls -la ./wheels/
           pip install --find-links ./wheels wannier-tools
       
       - name: Test MPI functionality
