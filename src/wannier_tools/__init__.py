@@ -70,7 +70,30 @@ def run(input_file="wt.in", output_file=None):
                 print("Fortran subroutine finished.")
     except Exception as e:
         if is_main_process:
-            print(f"An error occurred during the Fortran execution: {e}")
+            error_msg = str(e).lower()
+            if 'mpi' in error_msg or 'comm_f2c' in error_msg or 'mpi_init' in error_msg:
+                print("=" * 60)
+                print("MPI Error Detected!")
+                print("=" * 60)
+                print(f"Error details: {e}")
+                print("\nThis error typically occurs when:")
+                print("1. MPI is not properly installed on your system")
+                print("2. The program is called directly instead of via mpirun/mpiexec")
+                print("\nTo fix this issue:")
+                print("📦 Install MPI:")
+                print("   macOS:        brew install open-mpi")
+                print("   Ubuntu:       sudo apt install libopenmpi-dev")
+                print("   CentOS/RHEL:  sudo yum install openmpi-devel")
+                print("   Conda:        conda install openmpi")
+                print("\n🚀 For parallel execution, use:")
+                print("   mpirun -np <N> wt-py")
+                print("   (where <N> is the number of processes)")
+                print("\n💡 For single-core execution:")
+                print("   Just run: wt-py")
+                print("   (MPI should still be installed for the runtime)")
+                print("=" * 60)
+            else:
+                print(f"An error occurred during the Fortran execution: {e}")
     finally:
         if is_main_process:
             print(f"Restoring original working directory: {original_cwd}")

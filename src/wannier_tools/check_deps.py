@@ -107,6 +107,40 @@ def check_python_packages():
     
     return len(missing) == 0, missing
 
+def check_mpi():
+    """Check if MPI is available (required for parallel computation)"""
+    print("\n[MPI] Checking MPI availability for parallel computation:")
+    
+    mpi_commands = [
+        ('mpirun', 'mpirun'),
+        ('mpiexec', 'mpiexec'),
+    ]
+    
+    mpi_found = False
+    for cmd, desc in mpi_commands:
+        if check_command(cmd, f"MPI launcher ({desc})"):
+            mpi_found = True
+            # Try to get MPI version info
+            try:
+                result = subprocess.run([cmd, '--version'], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    first_line = result.stdout.strip().split('\n')[0]
+                    print(f"    Version: {first_line}")
+            except Exception:
+                pass
+            break
+    
+    if not mpi_found:
+        print("[WARN] MPI not found - parallel computation will not work")
+        print("    For parallel execution, please install an MPI implementation:")
+        print("    - macOS: brew install open-mpi")
+        print("    - Ubuntu/Debian: sudo apt install libopenmpi-dev")
+        print("    - CentOS/RHEL: sudo yum install openmpi-devel")
+        print("    - Conda: conda install openmpi")
+    
+    return mpi_found
+
 def check_system_libraries():
     """Check for system libraries"""
     conda_prefix = os.environ.get('CONDA_PREFIX', '/usr')
@@ -224,6 +258,17 @@ def print_installation_instructions():
     
     print("\n--- macOS (with Homebrew) ---")
     print("brew install gcc openblas arpack")
+    
+    print("\n--- MPI (for parallel computation) ---")
+    print("# macOS")
+    print("brew install open-mpi")
+    print("# Ubuntu/Debian")  
+    print("sudo apt install libopenmpi-dev")
+    print("# CentOS/RHEL/Fedora")
+    print("sudo yum install openmpi-devel")
+    print("# or: sudo dnf install openmpi-devel")
+    print("# Conda/Mamba")
+    print("conda install openmpi")
 
 def main():
     """Main dependency checking function"""
@@ -248,6 +293,11 @@ def main():
     if not check_system_libraries():
         all_good = False
         missing_critical.append("BLAS/LAPACK/ARPACK libraries")
+    
+    # Check MPI (for parallel computation)
+    if not check_mpi():
+        all_good = False
+        missing_critical.append("MPI (for parallel computation)")
     
     print("\n" + "="*60)
     

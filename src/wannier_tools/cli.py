@@ -23,6 +23,11 @@ Examples:
   wt-py -o output.log      # Redirect output to file
   wt-py --sample           # Create sample input file
   wt-py -i input.in -o out.log  # Custom input and output
+
+Note: For parallel computation, make sure MPI is installed:
+  macOS: brew install open-mpi
+  Ubuntu: sudo apt install libopenmpi-dev
+  Then use: mpirun -np N wt-py
         """
     )
     

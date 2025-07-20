@@ -115,6 +115,17 @@ jobs:
         with:
           python-version: '3.9'
       
+      - name: Install MPI for testing  
+        run: |
+          echo "📦 Installing OpenMPI for parallel computation tests..."
+          sudo apt-get update
+          sudo apt-get install -y openmpi-bin libopenmpi-dev libopenmpi3
+          echo "✅ MPI installation completed"
+          echo "MPI version info:"
+          mpirun --version
+          echo "MPI installation path:"
+          which mpirun
+      
       - name: Install wheel
         shell: bash
         run: |
@@ -134,10 +145,7 @@ jobs:
       
       - name: Test MPI functionality (Linux)
         run: |
-          # Wait for apt locks to be released
-          timeout 60 bash -c 'while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 1; done' || true
-          sudo apt-get update
-          sudo apt-get install -y openmpi-bin libopenmpi-dev libopenmpi3
+          echo "🚀 Testing MPI functionality (OpenMPI already installed)"
           mpirun --version
           
           cd examples/Haldane_model
@@ -220,6 +228,16 @@ jobs:
         with:
           python-version: '3.9'
       
+      - name: Install MPI for testing
+        run: |
+          echo "📦 Installing OpenMPI for parallel computation tests..."
+          brew install open-mpi
+          echo "✅ MPI installation completed"
+          echo "MPI version info:"
+          mpirun --version
+          echo "MPI installation path:"
+          which mpirun
+      
       - name: Install wheel
         shell: bash
         run: |
@@ -239,8 +257,7 @@ jobs:
       
       - name: Test MPI functionality (macOS)
         run: |
-          # Install OpenMPI on macOS
-          brew install open-mpi
+          echo "🚀 Testing MPI functionality (OpenMPI already installed)"
           mpirun --version
           
           cd examples/Haldane_model
