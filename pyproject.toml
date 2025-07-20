@@ -89,29 +89,41 @@ archs = ["x86_64", "arm64", "universal2"]
 environment = { FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", MACOSX_DEPLOYMENT_TARGET = "14.0", WANNIERTOOLS_RUNTIME_MPI_ONLY = "true" }
 before-build = [
     "echo 'Building macOS wheels with runtime MPI detection'",
-    "echo 'Target architecture: ${CIBW_ARCHS_MACOS:-unknown}'",
-    "echo 'Build machine: $(uname -m)'",
+    "echo \"Target architecture: $CIBW_ARCHS_MACOS\"",
+    "echo \"Build machine: `uname -m`\"",
     
     # 安装依赖 - gcc提供gfortran，但C/C++用Clang
     "brew install gcc openblas arpack",
     
-    # 架构特定配置 - 使用Clang + FLAGS方式（推荐）
-    "if [[ \"${CIBW_ARCHS_MACOS}\" == \"arm64\" ]]; then export BREW_PREFIX=/opt/homebrew && export ARCH_FLAGS=\"-arch arm64\" && echo 'Configuring for Apple Silicon (ARM64)'; elif [[ \"${CIBW_ARCHS_MACOS}\" == \"universal2\" ]]; then export BREW_PREFIX=/opt/homebrew && export ARCH_FLAGS=\"-arch arm64 -arch x86_64\" && echo 'Configuring for Universal Binary (ARM64 + x86_64)'; else export BREW_PREFIX=/usr/local && export ARCH_FLAGS=\"-arch x86_64\" && echo 'Configuring for Intel (x86_64)'; fi",
+    # 架构特定配置 - 修复变量展开
+    "if [[ \"$CIBW_ARCHS_MACOS\" == \"arm64\" ]]; then export BREW_PREFIX=/opt/homebrew && export ARCH_FLAGS=\"-arch arm64\" && echo 'Configuring for Apple Silicon (ARM64)'; elif [[ \"$CIBW_ARCHS_MACOS\" == \"universal2\" ]]; then export BREW_PREFIX=/opt/homebrew && export ARCH_FLAGS=\"-arch arm64 -arch x86_64\" && echo 'Configuring for Universal Binary (ARM64 + x86_64)'; else export BREW_PREFIX=/usr/local && export ARCH_FLAGS=\"-arch x86_64\" && echo 'Configuring for Intel (x86_64)'; fi",
     "echo \"Using Homebrew prefix: $BREW_PREFIX\"",
     "echo \"Architecture flags: $ARCH_FLAGS\"",
     
-    # 设置编译器 - Clang for C/C++, gfortran for Fortran (干净的方式)
+    # 设置编译器 - Clang for C/C++, gfortran for Fortran
     "export CC=clang",
     "export CXX=clang++", 
     "export FC=$BREW_PREFIX/bin/gfortran",
     
-    # 将架构和路径选项放入FLAGS而不是编译器变量 (Meson最佳实践)
+    # 将架构和路径选项放入FLAGS而不是编译器变量
     "export CFLAGS=\"$ARCH_FLAGS\"",
     "export CXXFLAGS=\"$ARCH_FLAGS\"",
     "export FFLAGS=\"$ARCH_FLAGS -fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch\"",
     "export LDFLAGS=\"$ARCH_FLAGS -L$BREW_PREFIX/lib -Wl,-rpath,$BREW_PREFIX/lib\"",
     "export CPPFLAGS=\"-I$BREW_PREFIX/include\"",
     "export PKG_CONFIG_PATH=\"$BREW_PREFIX/lib/pkgconfig:${PKG_CONFIG_PATH:-}\"",
+    
+    # 强制Meson使用我们指定的编译器，避免自动检测gcc
+    "export MESON_CC=clang",
+    "export MESON_CXX=clang++",
+    
+    # 创建临时gcc软链接作为备用方案（指向clang）
+    "mkdir -p /tmp/wanniertools_build_bin",
+    "ln -sf $(which clang) /tmp/wanniertools_build_bin/gcc",
+    "ln -sf $(which clang++) /tmp/wanniertools_build_bin/g++", 
+    "ln -sf $(which ar) /tmp/wanniertools_build_bin/gcc-ar",
+    "export PATH=\"/tmp/wanniertools_build_bin:$PATH\"",
+    "echo \"Temporary build PATH: $PATH\"",
     
     # 验证编译器设置
     "echo 'Compiler configuration:'",
@@ -121,7 +133,7 @@ before-build = [
     "echo \"CFLAGS=$CFLAGS\"",
     "echo \"FFLAGS=$FFLAGS\"",
     "$CC --version | head -1",
-    "$FC --version | head -1",
+    "test -f $FC && $FC --version | head -1 || echo 'WARNING: gfortran not found'",
     "echo 'Available libraries:'",
     "ls -la $BREW_PREFIX/lib/ | grep -E '(blas|arpack|gfortran)' || echo 'Libraries not found'"
 ]

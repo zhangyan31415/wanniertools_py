@@ -7,7 +7,21 @@ project('wannier-tools', 'fortran', 'c',
   ]
 )
 
-# --- Compiler Detection ---
+# --- Compiler Detection with explicit environment check ---
+# Ensure Meson uses our specified compilers, not auto-detected ones
+if get_option('buildtype') == 'release'
+  message('Release build: ensuring Meson uses environment-specified compilers')
+  cc_env = run_command('sh', '-c', 'echo $CC', check: false).stdout().strip()
+  cxx_env = run_command('sh', '-c', 'echo $CXX', check: false).stdout().strip()
+  if cc_env != ''
+    message('CC environment variable: ' + cc_env)
+  endif
+  if cxx_env != ''
+    message('CXX environment variable: ' + cxx_env) 
+  endif
+endif
+
+# Get compilers - should use CC/CXX environment variables
 c_compiler = meson.get_compiler('c')
 
 # Fortran compiler detection with better error handling
@@ -165,9 +179,9 @@ if disable_system_libs == '1'
   message('cibuildwheel detected: using manual library linking only')
 else
   # Normal build environment, use meson detection
-  blas_dep = dependency('blas', required: false)
-  lapack_dep = dependency('lapack', required: false) 
-  arpack_dep = dependency('arpack', required: false)
+blas_dep = dependency('blas', required: false)
+lapack_dep = dependency('lapack', required: false) 
+arpack_dep = dependency('arpack', required: false)
 endif
 
 math_deps = []
