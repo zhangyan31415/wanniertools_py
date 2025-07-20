@@ -115,7 +115,7 @@ before-build = [
 # Windows特定配置
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
-environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", WANNIERTOOLS_RUNTIME_MPI_ONLY = "true", PATH = "C:\\msys64\\mingw64\\bin;C:\\msys64\\usr\\bin;C:\\Windows\\System32;C:\\Windows" }
+environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", WANNIERTOOLS_RUNTIME_MPI_ONLY = "true" }
 before-build = [
     "echo Building Windows wheels with MinGW toolchain",
     "echo Installing delvewheel for DLL bundling...",
