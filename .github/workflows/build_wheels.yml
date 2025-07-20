@@ -12,6 +12,9 @@ jobs:
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: ${{ matrix.os == 'windows-latest' && 'cmd' || 'bash' }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -279,6 +282,9 @@ jobs:
     needs: build_wheels
     runs-on: windows-latest
     if: always()  # Run even if some builds failed
+    defaults:
+      run:
+        shell: cmd
     
     steps:
       - name: Checkout code
