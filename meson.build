@@ -222,9 +222,20 @@ else
 endif
 
 # Try to find libraries using meson's dependency system
-blas_dep = dependency('blas', required: false)
-lapack_dep = dependency('lapack', required: false) 
-arpack_dep = dependency('arpack', required: false)
+# For wheels/manylinux builds, disable system library detection to avoid conflicts
+disable_system_libs = run_command('python', '-c', 'import os; print(os.environ.get("CIBUILDWHEEL", "false"))', check: false).stdout().strip()
+if disable_system_libs == '1'
+  # In cibuildwheel environment, use manual linking only
+  blas_dep = dependency('', required: false)  # Force not found
+  lapack_dep = dependency('', required: false)  # Force not found
+  arpack_dep = dependency('', required: false)  # Force not found to avoid system conflicts
+  message('cibuildwheel detected: using manual library linking only')
+else
+  # Normal build environment, use meson detection
+  blas_dep = dependency('blas', required: false)
+  lapack_dep = dependency('lapack', required: false) 
+  arpack_dep = dependency('arpack', required: false)
+endif
 
 math_deps = []
 
@@ -244,8 +255,9 @@ else
     message('macOS: Using Accelerate framework for BLAS')
     link_args += ['-framework', 'Accelerate']
   elif build_machine.system() == 'linux'
-    message('Linux: Trying openblas')
-    link_args += ['-lopenblas']
+    message('Linux: Using OpenBLAS with explicit paths for manylinux')
+    # For manylinux builds, use explicit library paths
+    link_args += ['-L/usr/lib64', '-L/usr/local/lib64', '-L/usr/local/lib', '-lopenblas']
   elif build_machine.system() == 'windows'
     message('Windows: Trying OpenBLAS from MSYS2')
     # Add MSYS2 library path and use OpenBLAS
