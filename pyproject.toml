@@ -117,11 +117,9 @@ before-build = [
 archs = ["AMD64"]
 environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", WANNIERTOOLS_RUNTIME_MPI_ONLY = "true" }
 before-build = [
-    "echo Building Windows wheels",
     "pip install delvewheel",
     "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-openblas",
-    "set PATH=C:\\msys64\\mingw64\\bin;%PATH%",
-    "gcc --version",
-    "gfortran --version"
+    "dir C:\\msys64\\mingw64\\bin\\*openblas*",
+    "set PATH=C:\\msys64\\mingw64\\bin;%PATH%"
 ]
-repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}" 
+repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel} --add-path C:\\msys64\\mingw64\\bin" 
