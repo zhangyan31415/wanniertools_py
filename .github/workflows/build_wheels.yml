@@ -430,42 +430,53 @@ jobs:
           Write-Host "理由: MPI程序必须通过mpiexec启动，直接运行会导致堆损坏"
           Write-Host "检查MPI可用性:"
           
-          # 首先验证wheels是否真的用MS-MPI编译了
+          # 验证wheels的Fortran扩展模块
           Write-Host ""
-          Write-Host "=== 验证MPI编译状态 ==="
+          Write-Host "=== 验证Fortran扩展编译状态 ==="
           try {
-                          $mpi_compile_check = python -c "import wannier_tools; import os; os.environ['OMP_NUM_THREADS']='1'; os.environ['OPENBLAS_NUM_THREADS']='1'; ext = wannier_tools._get_extension(); print('✅ Fortran扩展模块已加载'); print('✅ MPI编译状态检查完成')" 2>&1
-                Write-Host $mpi_compile_check
-              } catch {
-                Write-Host "❌ MPI编译状态检查失败: $_"
-              }
+            $ext_check = python -c "import wannier_tools.wannier_tools_ext as wt_ext; print('[OK] Fortran extension module loaded successfully')" 2>&1
+            Write-Host $ext_check
+            if ($ext_check -match "OK") {
+              Write-Host "[OK] MPI compilation status verified"
+            } else {
+              Write-Host "[ERROR] Fortran extension compilation check FAILED"
+              Write-Host "   This indicates a build problem. The wheel may not have MPI support."
+              exit 1
+            }
+          } catch {
+            Write-Host "[ERROR] MPI compilation status check failed: $_"
+          }
               
               # 验证混合方案：MSYS2 gfortran库 + 官方MS-MPI运行时
-              $mpiexec_path = "$env:PROGRAMFILES\Microsoft MPI\Bin\mpiexec.exe"
+              $mpiexec_path = "$env:ProgramFiles\Microsoft MPI\Bin\mpiexec.exe"
               if (Test-Path $mpiexec_path) {
                 Write-Host "[OK] Hybrid solution verified: $mpiexec_path"
                 Write-Host "   Build: MSYS2 gfortran-compatible libs (ABI consistent)"
                 Write-Host "   Runtime: Official MS-MPI Runtime (stable and reliable)"
-              } else {
-                Write-Host "[ERROR] MS-MPI Runtime not found, using fallback detection..."
-                $mpiexec_path = Get-Command mpiexec.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Definition
-              }
-              
-              if ($mpiexec_path) {
-                Write-Host "[INFO] Starting MPI runtime test..."
                 
+                Write-Host "[INFO] Starting MPI runtime test..."
                 Write-Host ""
                 Write-Host "Test F1: Hybrid gfortran-compatible MPI validation"
                 Write-Host "Goal: Solve ABI incompatibility with MSYS2 libs + MS-MPI runtime"
                 
-                # Use the most secure MPI startup method
+                # Use explicit path to ensure we use Microsoft MPI, not MSYS2 mpiexec
+                Write-Host "Verifying MS-MPI version:"
                 try {
-                  Write-Host "启动命令: $mpiexec_path -n 1 -localonly wt-py.exe"
-                  $mpi_output = & $mpiexec_path -n 1 -localonly wt-py.exe 2>&1 | Out-String
+                  $version_output = & "$env:ProgramFiles\Microsoft MPI\Bin\mpiexec.exe" -help 2>&1 | Select-Object -First 3
+                  Write-Host $version_output
+                } catch {
+                  Write-Host "[WARNING] Could not get MS-MPI version info"
+                }
+                
+                Write-Host ""
+                Write-Host "Running MPI test with explicit MS-MPI path:"
+                try {
+                  Write-Host "Command: '$env:ProgramFiles\Microsoft MPI\Bin\mpiexec.exe' -n 1 wt-py.exe --version"
+                  $mpi_output = & "$env:ProgramFiles\Microsoft MPI\Bin\mpiexec.exe" -n 1 wt-py.exe --version 2>&1 | Out-String
                   $mpi_exit_code = $LASTEXITCODE
-                  Write-Host "MPI运行结果:"
+                  Write-Host "MPI test output:"
                   Write-Host $mpi_output
-                  Write-Host "退出码: $mpi_exit_code"
+                  Write-Host "Exit code: $mpi_exit_code"
                   
                   if ($mpi_exit_code -eq 0) {
                     Write-Host "[SUCCESS] Perfect! gfortran-compatible MPI run successful!"
@@ -480,11 +491,11 @@ jobs:
                     Write-Host "   Possible remaining ABI incompatibility or threading conflict."
                     Write-Host "   Verify that ONLY gfortran-compatible libraries were used."
                   } else {
-                    Write-Host "⚠️ 新的退出码: $mpi_exit_code"
-                    Write-Host "   需要进一步分析"
+                    Write-Host "[INFO] Unexpected exit code: $mpi_exit_code"
+                    Write-Host "   Requires further analysis"
                   }
                 } catch {
-                  Write-Host "❌ MPI测试异常: $_"
+                  Write-Host "[ERROR] MPI test exception: $_"
                 }
                 
                 Write-Host ""
@@ -495,7 +506,9 @@ jobs:
                 Write-Host "   [EXPECTATION] Complete elimination of 0xC0000374/5 errors"
                 
               } else {
-                Write-Host "[SKIPPED] MPI runtime test skipped: mpiexec not found in PATH"
+                Write-Host "[SKIPPED] MS-MPI Runtime not found at expected path"
+                Write-Host "   Expected: $env:ProgramFiles\Microsoft MPI\Bin\mpiexec.exe"
+                Write-Host "   MPI test will be skipped"
               }
         env:
           OPENBLAS_NUM_THREADS: 1
