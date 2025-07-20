@@ -115,8 +115,22 @@ jobs:
           
           cd examples/Haldane_model
           echo "=== 测试单核运行 ==="
-          if ! timeout 60 wt-py; then
-            echo "❌ Linux单核测试失败"
+          
+          # 强化错误检测 - 单核测试
+          set +e
+          wt_output=$(timeout 60 wt-py 2>&1)
+          wt_exit_code=$?
+          set -e
+          
+          echo "$wt_output"
+          
+          if [ $wt_exit_code -ne 0 ]; then
+            echo "❌ Linux单核测试失败，退出码: $wt_exit_code"
+            exit 1
+          fi
+          
+          if echo "$wt_output" | grep -q "FATAL\|ERROR\|Could not import"; then
+            echo "❌ 检测到错误信息"
             exit 1
           fi
           
@@ -130,8 +144,22 @@ jobs:
           
           echo "=== 测试双核并行 ==="
           rm -f WT.out  # 清理之前的输出
-          if ! timeout 60 mpirun --oversubscribe -np 2 wt-py; then
-            echo "❌ Linux双核测试失败"
+          
+          # 强化错误检测 - 双核测试  
+          set +e
+          mpi_output=$(timeout 60 mpirun --oversubscribe -np 2 wt-py 2>&1)
+          mpi_exit_code=$?
+          set -e
+          
+          echo "$mpi_output"
+          
+          if [ $mpi_exit_code -ne 0 ]; then
+            echo "❌ Linux双核测试失败，退出码: $mpi_exit_code"
+            exit 1
+          fi
+          
+          if echo "$mpi_output" | grep -q "FATAL\|ERROR\|Could not import"; then
+            echo "❌ 双核测试检测到错误信息"
             exit 1
           fi
           
@@ -190,9 +218,22 @@ jobs:
           
           cd examples/Haldane_model
           echo "=== 测试单核运行 ==="
-          # macOS没有timeout命令，直接运行
-          if ! wt-py; then
-            echo "❌ macOS单核测试失败"
+          
+          # 强化错误检测 - 单核测试
+          set +e
+          wt_output=$(wt-py 2>&1)
+          wt_exit_code=$?
+          set -e
+          
+          echo "$wt_output"
+          
+          if [ $wt_exit_code -ne 0 ]; then
+            echo "❌ macOS单核测试失败，退出码: $wt_exit_code"
+            exit 1
+          fi
+          
+          if echo "$wt_output" | grep -q "FATAL\|ERROR\|Could not import"; then
+            echo "❌ 检测到错误信息"
             exit 1
           fi
           
@@ -206,9 +247,22 @@ jobs:
           
           echo "=== 测试双核并行 ==="
           rm -f WT.out  # 清理之前的输出
-          # macOS没有timeout命令，直接运行
-          if ! mpirun --oversubscribe -np 2 wt-py; then
-            echo "❌ macOS双核测试失败"
+          
+          # 强化错误检测 - 双核测试
+          set +e
+          mpi_output=$(mpirun --oversubscribe -np 2 wt-py 2>&1)
+          mpi_exit_code=$?
+          set -e
+          
+          echo "$mpi_output"
+          
+          if [ $mpi_exit_code -ne 0 ]; then
+            echo "❌ macOS双核测试失败，退出码: $mpi_exit_code"
+            exit 1
+          fi
+          
+          if echo "$mpi_output" | grep -q "FATAL\|ERROR\|Could not import"; then
+            echo "❌ 双核测试检测到错误信息"
             exit 1
           fi
           
@@ -267,18 +321,42 @@ jobs:
           
           cd examples/Haldane_model
           echo "=== 测试单核运行 ==="
-          # Windows bash可能没有timeout命令，直接运行
-          # 如果出现DLL错误，测试应该失败
-          if ! wt-py; then
-            echo "❌ Windows单核测试失败"
+          
+          # 捕获wt-py的输出和退出码
+          set +e  # 允许命令失败而不退出脚本
+          wt_output=$(wt-py 2>&1)
+          wt_exit_code=$?
+          set -e  # 重新启用错误时退出
+          
+          echo "$wt_output"  # 显示完整输出
+          
+          # 检查多种失败条件
+          if [ $wt_exit_code -ne 0 ]; then
+            echo "❌ wt-py命令返回错误退出码: $wt_exit_code"
             exit 1
           fi
           
+          if echo "$wt_output" | grep -q "FATAL"; then
+            echo "❌ 检测到FATAL错误"
+            exit 1
+          fi
+          
+          if echo "$wt_output" | grep -q "DLL load failed"; then
+            echo "❌ 检测到DLL加载错误"
+            exit 1
+          fi
+          
+          if echo "$wt_output" | grep -q "Could not import"; then
+            echo "❌ 检测到导入错误"
+            exit 1
+          fi
+          
+          # 检查是否生成了WT.out文件
           if [ -f WT.out ]; then
             cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
             echo "单核结果: $cores"
           else
-            echo "❌ 未生成WT.out文件"
+            echo "❌ 未生成WT.out文件，说明wt-py实际未成功运行"
             exit 1
           fi
           

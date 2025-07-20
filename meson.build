@@ -259,9 +259,11 @@ else
     # For manylinux builds, use explicit library paths
     link_args += ['-L/usr/lib64', '-L/usr/local/lib64', '-L/usr/local/lib', '-lopenblas']
   elif build_machine.system() == 'windows'
-    message('Windows: Trying OpenBLAS from MSYS2')
-    # Add MSYS2 library path and use OpenBLAS
+    message('Windows: Configuring OpenBLAS from MSYS2')
+    # Add MSYS2 library and include paths
     link_args += ['-LC:/msys64/mingw64/lib', '-lopenblas']
+    # Ensure DLL search path includes MSYS2 bin directory
+    message('Windows: Adding MSYS2 bin to library search path for DLL discovery')
   endif
 endif
 
@@ -294,8 +296,17 @@ endif
 # For Windows, add additional system libraries and ensure consistent toolchain
 if build_machine.system() == 'windows'
   if fortran_compiler.get_id().startswith('gcc')
-    message('Windows: Using MinGW/GCC toolchain')
-    link_args += ['-lgfortran', '-lquadmath', '-lm']
+    message('Windows: Using MinGW/GCC toolchain with enhanced DLL support')
+    # Add runtime libraries with explicit paths for better DLL discovery
+    link_args += ['-LC:/msys64/mingw64/bin', '-LC:/msys64/mingw64/lib']
+    link_args += ['-lgfortran', '-lquadmath', '-lm', '-lwinpthread']
+    
+    # Add runtime DLL search paths
+    link_args += ['-Wl,--enable-auto-import']
+    link_args += ['-Wl,--enable-runtime-pseudo-reloc']
+    
+    message('Windows: Added MinGW runtime libraries and DLL search paths')
+    
     # Ensure we use MinGW linker, not MSVC
     if c_compiler.get_id() != 'gcc'
       warning('Windows: C compiler is not GCC, this may cause linking issues')

@@ -115,16 +115,25 @@ before-build = [
 # Windows特定配置
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
-environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", WANNIERTOOLS_RUNTIME_MPI_ONLY = "true" }
+environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", WANNIERTOOLS_RUNTIME_MPI_ONLY = "true", PATH = "C:\\msys64\\mingw64\\bin;C:\\msys64\\usr\\bin;C:\\Windows\\System32;C:\\Windows" }
 before-build = [
     "echo Building Windows wheels with MinGW toolchain",
+    "echo Installing delvewheel for DLL bundling...",
+    "pip install delvewheel",
     "echo Installing OpenBLAS via MSYS2...",
     "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-openblas || echo OpenBLAS installation failed, continuing without",
+    "echo Adding MSYS2 to PATH for DLL discovery...",
+    "set PATH=C:\\msys64\\mingw64\\bin;C:\\msys64\\usr\\bin;%PATH%",
+    "echo Updated PATH: %PATH%",
     "echo Compiler versions:",
     "gcc --version",
     "g++ --version", 
     "gfortran --version",
     "echo Checking for BLAS libraries:",
     "dir C:\\msys64\\mingw64\\lib\\*blas* || echo No BLAS libs found",
-    "dir C:\\msys64\\mingw64\\lib\\*lapack* || echo No LAPACK libs found"
-] 
+    "dir C:\\msys64\\mingw64\\lib\\*lapack* || echo No LAPACK libs found",
+    "echo Checking DLL availability:",
+    "where libgfortran*.dll || echo libgfortran not in PATH",
+    "where libopenblas*.dll || echo libopenblas not in PATH"
+]
+repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}" 
