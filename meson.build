@@ -134,7 +134,7 @@ if build_machine.system() == 'windows'
     message('   Library: ' + msys2_mpi_lib + '/libmsmpi.dll.a')
     
     # Create MPI dependency with explicit MSYS2 paths
-    mpi_dep = declare_dependency(
+            mpi_dep = declare_dependency(
       include_directories: include_directories(msys2_mpi_inc),
       dependencies: [
         c_compiler.find_library('msmpi', dirs: msys2_mpi_lib, required: true)
@@ -165,9 +165,9 @@ if disable_system_libs == '1'
   message('cibuildwheel detected: using manual library linking only')
 else
   # Normal build environment, use meson detection
-  blas_dep = dependency('blas', required: false)
-  lapack_dep = dependency('lapack', required: false) 
-  arpack_dep = dependency('arpack', required: false)
+blas_dep = dependency('blas', required: false)
+lapack_dep = dependency('lapack', required: false) 
+arpack_dep = dependency('arpack', required: false)
 endif
 
 math_deps = []
@@ -272,11 +272,16 @@ endif
 # Add MPI preprocessor definition if MPI is found
 # For wheels/packaging builds, we use runtime MPI detection only
 runtime_mpi_only = run_command('python', '-c', 'import os; print(os.environ.get("WANNIERTOOLS_RUNTIME_MPI_ONLY", "false"))', check: false).stdout().strip()
-if mpi_dep.found() and runtime_mpi_only != 'true'
+is_wheel_build = run_command('python', '-c', 'import os; print(os.environ.get("CIBUILDWHEEL", "false"))', check: false).stdout().strip()
+
+# Force runtime MPI detection for wheel builds or when explicitly requested
+if runtime_mpi_only == 'true' or is_wheel_build == '1'
+  message('Building with runtime-only MPI detection (wheels mode)')
+elif mpi_dep.found()
   fortran_args += ['-DMPI']
   message('Building with compile-time MPI support')
 else
-  message('Building with runtime-only MPI detection (wheels mode)')
+  message('Building with runtime-only MPI detection (no MPI found)')
 endif
 
 if build_machine.system() == 'windows' and fortran_compiler.get_id().startswith('intel')

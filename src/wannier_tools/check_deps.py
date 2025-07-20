@@ -138,6 +138,10 @@ def check_mpi():
         print("    - Ubuntu/Debian: sudo apt install libopenmpi-dev")
         print("    - CentOS/RHEL: sudo yum install openmpi-devel")
         print("    - Conda: conda install openmpi")
+    else:
+        print("[INFO] MPI detected - ready for parallel computation:")
+        print("    - Single-core: wt-py")
+        print("    - Multi-core:  mpirun -np N wt-py")
     
     return mpi_found
 
