@@ -331,7 +331,7 @@ jobs:
           Get-Command wt-py.exe -ErrorAction SilentlyContinue | Format-List
           Write-Host "测试Python导入："
           python -c "import sys; print('Python path:', sys.executable)"
-          python -c "try: import wannier_tools; print('OK wannier_tools import success'); except Exception as e: print('FAIL import error:', e)"
+          python -c "import wannier_tools; print('wannier_tools import OK')"
           
           cd examples/Haldane_model
           Write-Host "=== 测试单核运行 ==="
@@ -345,10 +345,10 @@ jobs:
           python -c "import wannier_tools; print('wannier_tools imported OK')"
           
           Write-Host "步骤3: 测试扩展模块导入"
-          python -c "try: import wannier_tools.wannier_tools_ext; print('Extension module OK'); except Exception as e: print('Extension FAIL:', e)"
+          python -c "import wannier_tools.wannier_tools_ext; print('Extension module OK')"
           
-          Write-Host "步骤4: 测试CLI模块"
-          python -c "try: import wannier_tools.cli; print('CLI module OK'); except Exception as e: print('CLI FAIL:', e)"
+          Write-Host "步骤4: 测试CLI模块"  
+          python -c "import wannier_tools.cli; print('CLI module OK')"
           
           Write-Host "步骤5: 尝试直接CLI调用"
           try {
