@@ -65,6 +65,8 @@ jobs:
         env:
           # macOS: 让 cibuildwheel 分别构建每个架构，然后自动合并 universal2
           CIBW_ARCHS_MACOS: "x86_64 arm64"
+          # 设置macOS最低版本为14.0，匹配Homebrew gfortran要求
+          CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=14.0"
           # 架构特定的环境配置
           CIBW_ENVIRONMENT_MACOS_ARM64: >
             CC=clang
