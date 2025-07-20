@@ -97,6 +97,16 @@ before-build = [
     "echo \"Architecture flags: $ARCH_FLAGS\"",
     # 安装编译器和库
     "brew install gcc openblas arpack",
+    # 修复macOS ARM64上的gcc版本化问题 - 创建无版本别名
+    "echo 'Creating gcc aliases for Meson compatibility...'",
+    "GCC_VERSION=$(ls $BREW_PREFIX/bin/gcc-* | head -1 | sed 's/.*gcc-//')",
+    "echo \"Found GCC version: $GCC_VERSION\"",
+    "ln -sf $BREW_PREFIX/bin/gcc-$GCC_VERSION $BREW_PREFIX/bin/gcc",
+    "ln -sf $BREW_PREFIX/bin/gcc-ar-$GCC_VERSION $BREW_PREFIX/bin/gcc-ar",
+    "ln -sf $BREW_PREFIX/bin/gcc-nm-$GCC_VERSION $BREW_PREFIX/bin/gcc-nm",
+    "ln -sf $BREW_PREFIX/bin/gcc-ranlib-$GCC_VERSION $BREW_PREFIX/bin/gcc-ranlib",
+    "echo 'GCC aliases created:'",
+    "ls -la $BREW_PREFIX/bin/gcc $BREW_PREFIX/bin/gcc-ar || echo 'Alias creation may have failed'",
     # 配置编译器环境变量
     "export CC=\"clang $ARCH_FLAGS\"",
     "export CXX=\"clang++ $ARCH_FLAGS\"", 
