@@ -104,6 +104,30 @@ jobs:
           python -c "import wannier_tools; print(f'[OK] wannier_tools {wannier_tools.__version__} imported successfully')"
           python -c "import wannier_tools.check_deps; wannier_tools.check_deps.main()"
           wt-check-deps
+      
+      - name: Test MPI functionality (Linux)
+        run: |
+          # Wait for apt locks to be released
+          timeout 60 bash -c 'while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 1; done' || true
+          sudo apt-get update
+          sudo apt-get install -y openmpi-bin libopenmpi-dev libopenmpi3
+          mpirun --version
+          
+          cd examples/Haldane_model
+          echo "=== 测试单核运行 ==="
+          timeout 60 wt-py || echo "单核测试完成(timeout)"
+          if [ -f WT.out ]; then
+            cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
+            echo "单核结果: $cores"
+          fi
+          
+          echo "=== 测试双核并行 ==="
+          rm -f WT.out  # 清理之前的输出
+          timeout 60 mpirun --oversubscribe -np 2 wt-py || echo "双核测试完成(timeout)"
+          if [ -f WT.out ]; then
+            cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
+            echo "双核结果: $cores"
+          fi
 
   test_macos:
     name: Test macOS wheel
@@ -143,6 +167,28 @@ jobs:
           python -c "import wannier_tools; print(f'[OK] wannier_tools {wannier_tools.__version__} imported successfully')"
           python -c "import wannier_tools.check_deps; wannier_tools.check_deps.main()"
           wt-check-deps
+      
+      - name: Test MPI functionality (macOS)
+        run: |
+          # Install OpenMPI on macOS
+          brew install open-mpi
+          mpirun --version
+          
+          cd examples/Haldane_model
+          echo "=== 测试单核运行 ==="
+          timeout 60 wt-py || echo "单核测试完成(timeout)"
+          if [ -f WT.out ]; then
+            cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
+            echo "单核结果: $cores"
+          fi
+          
+          echo "=== 测试双核并行 ==="
+          rm -f WT.out  # 清理之前的输出
+          timeout 60 mpirun --oversubscribe -np 2 wt-py || echo "双核测试完成(timeout)"
+          if [ -f WT.out ]; then
+            cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
+            echo "双核结果: $cores"
+          fi
 
   test_windows:
     name: Test Windows wheel
@@ -182,40 +228,13 @@ jobs:
           python -c "import wannier_tools; print(f'[OK] wannier_tools {wannier_tools.__version__} imported successfully')"
           python -c "import wannier_tools.check_deps; wannier_tools.check_deps.main()"
           wt-check-deps
-  
-  test_mpi_functionality:
-    name: Test MPI functionality (Linux)
-    needs: build_wheels
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
       
-      - name: Download Linux wheels
-        uses: actions/download-artifact@v4
-        with:
-          name: wheels-ubuntu-latest
-          path: ./wheels
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'  # Match the wheel Python version
-      
-      - name: Install MPI for testing
+      - name: Test MPI functionality (Windows) 
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y openmpi-bin libopenmpi-dev libopenmpi3
-          mpirun --version
-      
-      - name: Install wheel
-        run: |
-          ls -la ./wheels/
-          pip install --find-links ./wheels wannier-tools
-      
-      - name: Test MPI functionality
-        run: |
+          echo "=== Windows MPI测试 ==="
+          echo "Note: Windows MPI安装较复杂，目前只测试运行时MPI检测"
+          
           cd examples/Haldane_model
           echo "=== 测试单核运行 ==="
           timeout 60 wt-py || echo "单核测试完成(timeout)"
@@ -224,13 +243,7 @@ jobs:
             echo "单核结果: $cores"
           fi
           
-          echo "=== 测试双核并行 ==="
-          rm -f WT.out  # 清理之前的输出
-          timeout 60 mpirun --oversubscribe -np 2 wt-py || echo "双核测试完成(timeout)"
-          if [ -f WT.out ]; then
-            cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
-            echo "双核结果: $cores"
-          fi
+          echo "=== Windows暂时跳过多核测试（需要MS-MPI安装） ==="
   
   collect_wheels:
     name: Collect all wheels
