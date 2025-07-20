@@ -185,29 +185,62 @@ if build_machine.system() == 'windows'
   
   # If Intel MPI not found, try Microsoft MPI
   if not mpi_dep.found()
-    msmpi_dir = run_command('python', '-c', 
-      'import os; print(os.environ.get("MSMPI_BIN", ""))', 
+    # Check for MS-MPI using environment variables from cibuildwheel
+    msmpi_inc = run_command('python', '-c', 
+      'import os; print(os.environ.get("MSMPI_INC", ""))', 
+      check: false).stdout().strip()
+    msmpi_lib64 = run_command('python', '-c', 
+      'import os; print(os.environ.get("MSMPI_LIB64", ""))', 
       check: false).stdout().strip()
     
-    if msmpi_dir != ''
-      message('Found Microsoft MPI at: ' + msmpi_dir)
-      # Create a custom MPI dependency for MS-MPI
-      msmpi_inc = run_command('python', '-c',
-        'import os; msmpi_bin = os.environ.get("MSMPI_BIN", ""); print(os.path.join(os.path.dirname(msmpi_bin), "Include") if msmpi_bin else "")',
-        check: false).stdout().strip()
-      msmpi_lib = run_command('python', '-c', 
-        'import os; msmpi_bin = os.environ.get("MSMPI_BIN", ""); print(os.path.join(os.path.dirname(msmpi_bin), "Lib", "x64") if msmpi_bin else "")',
+    # Also check runtime environment for MS-MPI
+    if msmpi_inc == '' or msmpi_lib64 == ''
+      msmpi_dir = run_command('python', '-c', 
+        'import os; print(os.environ.get("MSMPI_BIN", ""))', 
         check: false).stdout().strip()
       
-      if msmpi_inc != '' and msmpi_lib != ''
+      if msmpi_dir != ''
+        msmpi_inc = run_command('python', '-c',
+          'import os; msmpi_bin = os.environ.get("MSMPI_BIN", ""); print(os.path.join(os.path.dirname(msmpi_bin), "Include") if msmpi_bin else "")',
+          check: false).stdout().strip()
+        msmpi_lib64 = run_command('python', '-c', 
+          'import os; msmpi_bin = os.environ.get("MSMPI_BIN", ""); print(os.path.join(os.path.dirname(msmpi_bin), "Lib", "x64") if msmpi_bin else "")',
+          check: false).stdout().strip()
+      endif
+      
+      # Try default MS-MPI SDK paths
+      if msmpi_inc == '' or msmpi_lib64 == ''
+        msmpi_inc = 'C:/Program Files (x86)/Microsoft SDKs/MPI/Include'
+        msmpi_lib64 = 'C:/Program Files (x86)/Microsoft SDKs/MPI/Lib/x64'
+      endif
+    endif
+    
+    message('Checking for Microsoft MPI SDK:')
+    message('  Include: ' + msmpi_inc)
+    message('  Library: ' + msmpi_lib64)
+    
+    # Verify MS-MPI headers and libraries exist
+    msmpi_h_check = run_command('python', '-c', 
+      'import os; print("yes" if os.path.exists(r"' + join_paths(msmpi_inc, 'mpi.h') + '") else "no")', 
+      check: false).stdout().strip()
+    msmpi_lib_check = run_command('python', '-c', 
+      'import os; print("yes" if os.path.exists(r"' + join_paths(msmpi_lib64, 'msmpi.lib') + '") else "no")', 
+      check: false).stdout().strip()
+      
+    if msmpi_h_check == 'yes' and msmpi_lib_check == 'yes'
+      message('Found MS-MPI headers and libraries')
+      msmpi_lib_dep = c_compiler.find_library('msmpi', dirs: msmpi_lib64, required: false)
+      if msmpi_lib_dep.found()
         mpi_dep = declare_dependency(
           include_directories: include_directories(msmpi_inc),
-          dependencies: c_compiler.find_library('msmpi', dirs: msmpi_lib, required: false)
+          dependencies: msmpi_lib_dep
         )
-        if mpi_dep.found()
-          message('Successfully configured Microsoft MPI dependency')
-        endif
+        message('Successfully configured Microsoft MPI dependency')
+      else
+        message('MS-MPI headers found but library linking failed')
       endif
+    else
+      message('MS-MPI headers or libraries not found at expected paths')
     endif
   endif
   
