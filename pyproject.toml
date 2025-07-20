@@ -117,16 +117,22 @@ before-build = [
 archs = ["AMD64"]
 environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1" }
 before-build = [
-    "echo Installing dependencies for Windows wheels with gfortran-compatible MPI",
+    "echo Installing Windows wheels with hybrid gfortran+MS-MPI compatibility",
     "pip install delvewheel",
-    "echo Installing gfortran-compatible libraries via MSYS2...",
+    "echo Installing MSYS2 gfortran-compatible libraries...",
     "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-openblas",
-    "echo Installing MSYS2 gfortran-compatible MS-MPI...",
+    "echo Installing MSYS2 gfortran-compatible MS-MPI development libraries...",
     "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-msmpi",
-    "echo Configuring PATH for MSYS2 gfortran+MPI toolchain...",
-    "set PATH=C:\\msys64\\mingw64\\bin;%PATH%",
-    "echo Verifying gfortran-compatible MPI installation...",
-    "C:\\msys64\\mingw64\\bin\\mpiexec.exe --version",
-    "echo Build environment configured for gfortran+MS-MPI compatibility"
+    "echo Installing official MS-MPI Runtime for mpiexec.exe...",
+    "powershell -Command \"Invoke-WebRequest -Uri 'https://download.microsoft.com/download/a/5/2/a5207ca5-1203-491a-8fb8-906fd68ae623/msmpisetup.exe' -OutFile 'msmpisetup.exe'\"",
+    "powershell -Command \"Start-Process -FilePath '.\\msmpisetup.exe' -ArgumentList '-unattend' -Wait -NoNewWindow\"",
+    "echo Configuring hybrid environment: MSYS2 PATH + MS-MPI Runtime...",
+    "set PATH=C:\\msys64\\mingw64\\bin;C:\\Program Files\\Microsoft MPI\\Bin;%PATH%",
+    "echo Verifying gfortran-compatible MPI headers and libraries...",
+    "dir C:\\msys64\\mingw64\\include\\mpi.h",
+    "dir C:\\msys64\\mingw64\\lib\\libmsmpi.dll.a",
+    "echo Verifying MS-MPI runtime (mpiexec.exe)...",
+    "powershell -Command \"& '$env:PROGRAMFILES\\Microsoft MPI\\Bin\\mpiexec.exe' -help | Select-Object -First 5\"",
+    "echo ✅ Hybrid compatibility configured: gfortran libs + MS-MPI runtime"
 ]
 repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel} --add-path C:\\msys64\\mingw64\\bin" 

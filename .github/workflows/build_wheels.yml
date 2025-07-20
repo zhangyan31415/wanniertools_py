@@ -440,11 +440,14 @@ jobs:
                 Write-Host "❌ MPI编译状态检查失败: $_"
               }
               
-              # 优先使用MSYS2的gfortran兼容mpiexec
-              $mpiexec_path = "C:\msys64\mingw64\bin\mpiexec.exe"
+              # 验证混合方案：MSYS2 gfortran库 + 官方MS-MPI运行时
+              $mpiexec_path = "$env:PROGRAMFILES\Microsoft MPI\Bin\mpiexec.exe"
               if (Test-Path $mpiexec_path) {
-                Write-Host "✅ 找到MSYS2 gfortran兼容mpiexec: $mpiexec_path"
+                Write-Host "✅ 混合方案验证成功: $mpiexec_path"
+                Write-Host "   构建: MSYS2 gfortran兼容库 (ABI一致)"
+                Write-Host "   运行: 官方MS-MPI Runtime (稳定可靠)"
               } else {
+                Write-Host "❌ MS-MPI Runtime未找到，使用备用检测..."
                 $mpiexec_path = Get-Command mpiexec.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Definition
               }
               
@@ -466,8 +469,8 @@ jobs:
                 Write-Host "  MSMPI_DISABLE_SHM = $env:MSMPI_DISABLE_SHM"
                 
                 Write-Host ""
-                Write-Host "测试F1: gfortran兼容MPI验证"
-                Write-Host "目标: 解决Intel/gfortran ABI不兼容问题"
+                Write-Host "测试F1: 混合gfortran兼容MPI验证"
+                Write-Host "目标: MSYS2库+MS-MPI运行时解决ABI不兼容问题"
                 
                 # 使用最安全的MPI启动方式
                 try {

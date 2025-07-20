@@ -114,17 +114,40 @@ endif
 if build_machine.system() == 'windows'
   message('Windows detected: using MSYS2 gfortran-compatible MPI for ABI compatibility')
   message('Reason: Official MS-MPI uses Intel Fortran ABI, incompatible with gfortran')
+  message('Solution: MSYS2 mingw-w64-x86_64-msmpi provides gfortran-compatible libraries')
   
-  # Use standard pkg-config detection which will find MSYS2 MPI
-  mpi_dep = dependency('mpi', language: 'fortran', required: false)
+  # Force check for MSYS2 MPI installation
+  msys2_mpi_inc = 'C:/msys64/mingw64/include'
+  msys2_mpi_lib = 'C:/msys64/mingw64/lib'
   
-  if mpi_dep.found()
-    message('✅ Found gfortran-compatible MPI via pkg-config (likely MSYS2)')
-    message('    This resolves Intel/gfortran ABI mismatch issues')
+  # Verify MSYS2 gfortran-compatible MPI is installed
+  mpi_h_exists = run_command('python', '-c', 
+    'import os; exit(0 if os.path.exists(r"' + msys2_mpi_inc + '/mpi.h") else 1)', 
+    check: false).returncode() == 0
+  mpi_lib_exists = run_command('python', '-c', 
+    'import os; exit(0 if os.path.exists(r"' + msys2_mpi_lib + '/libmsmpi.dll.a") else 1)', 
+    check: false).returncode() == 0
+    
+  if mpi_h_exists and mpi_lib_exists
+    message('✅ MSYS2 gfortran-compatible MPI found')
+    message('   Headers: ' + msys2_mpi_inc + '/mpi.h')
+    message('   Library: ' + msys2_mpi_lib + '/libmsmpi.dll.a')
+    
+    # Create MPI dependency with explicit MSYS2 paths
+    mpi_dep = declare_dependency(
+      include_directories: include_directories(msys2_mpi_inc),
+      dependencies: [
+        cc.find_library('msmpi', dirs: msys2_mpi_lib, required: true)
+      ],
+      compile_args: ['-DHAVE_MPI']
+    )
+    message('✅ Hybrid gfortran+MS-MPI compatibility configured successfully')
+    message('   Build: gfortran + MSYS2 libs (ABI consistent)')
+    message('   Runtime: Official MS-MPI mpiexec.exe (from separate installation)')
   else
-    message('⚠️  No gfortran-compatible MPI found')
-    message('    Building without MPI support (runtime detection only)')
-    message('    Install: pacman -S mingw-w64-x86_64-msmpi for gfortran compatibility')
+    error('MSYS2 gfortran-compatible MPI not found!\n' +
+          'Required: pacman -S mingw-w64-x86_64-msmpi\n' + 
+          'This package provides gfortran-compatible MPI libraries to avoid ABI mismatch.')
   endif
 else
   # Linux/macOS: use standard MPI detection
