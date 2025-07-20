@@ -132,7 +132,7 @@ before-build = [
     "dir C:\\msys64\\mingw64\\include\\mpi.h",
     "dir C:\\msys64\\mingw64\\lib\\libmsmpi.dll.a",
     "echo Verifying MS-MPI runtime (mpiexec.exe)...",
-    "powershell -Command \"& '$env:PROGRAMFILES\\Microsoft MPI\\Bin\\mpiexec.exe' -help | Select-Object -First 5\"",
+    "powershell -Command \"& \\\"$env:ProgramFiles\\Microsoft MPI\\Bin\\mpiexec.exe\\\" -help | Select-Object -First 5\"",
     "echo ✅ Hybrid compatibility configured: gfortran libs + MS-MPI runtime"
 ]
 repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel} --add-path C:\\msys64\\mingw64\\bin" 
