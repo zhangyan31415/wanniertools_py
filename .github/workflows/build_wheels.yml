@@ -497,10 +497,6 @@ jobs:
               } else {
                 Write-Host "[SKIPPED] MPI runtime test skipped: mpiexec not found in PATH"
               }
-            } else {
-              Write-Host "[SKIPPED] MPI runtime test skipped: wheel does not have MPI support"
-            }
-          }
         env:
           OPENBLAS_NUM_THREADS: 1
           OMP_NUM_THREADS: 1
