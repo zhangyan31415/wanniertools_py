@@ -455,6 +455,11 @@ jobs:
                 Write-Host "   Runtime: Official MS-MPI Runtime (stable and reliable)"
                 
                 Write-Host "[INFO] Starting MPI runtime test..."
+                
+                # Initialize success tracking variables with script scope
+                $script:single_success = $false
+                $script:multi_success = $false
+                
                 Write-Host ""
                 Write-Host "Test F1: Hybrid gfortran-compatible MPI validation"
                 Write-Host "Goal: Solve ABI incompatibility with MSYS2 libs + MS-MPI runtime"
@@ -526,17 +531,16 @@ jobs:
                   }
                   
                                      # Evaluate test success based on WT.out generation and content
-                   $single_success = $false
                    if (Test-Path "WT.out") {
                      $core_info = Get-Content "WT.out" | Select-String "You are using.*CPU cores" | Select-Object -Last 1
                      if ($core_info -and $core_info -match "1.*CPU cores") {
-                       $single_success = $true
+                       $script:single_success = $true
                        Write-Host "[SUCCESS] Single-core MPI computation fully functional!"
                        Write-Host "   WT.out generated correctly with proper core count"
                      }
                    }
                    
-                   if ($single_success) {
+                   if ($script:single_success) {
                      Write-Host "[OK] Single-core test PASSED (computation successful despite exit code $single_exit_code)"
                    } else {
                      Write-Host "[ERROR] Single-core test FAILED - no valid computation output"
@@ -580,17 +584,16 @@ jobs:
                   }
                   
                                      # Evaluate test success based on WT.out generation and content
-                   $multi_success = $false
                    if (Test-Path "WT.out") {
                      $core_info = Get-Content "WT.out" | Select-String "You are using.*CPU cores" | Select-Object -Last 1
                      if ($core_info -and ($core_info -match "2.*CPU cores" -or $core_info -match "[12].*CPU cores")) {
-                       $multi_success = $true
+                       $script:multi_success = $true
                        Write-Host "[SUCCESS] Multi-core MPI computation fully functional!"
                        Write-Host "   WT.out generated correctly with proper core count"
                      }
                    }
                    
-                   if ($multi_success) {
+                   if ($script:multi_success) {
                      Write-Host "[OK] Multi-core test PASSED (computation successful despite exit code $multi_exit_code)"
                    } else {
                      Write-Host "[ERROR] Multi-core test FAILED - no valid computation output"
@@ -602,7 +605,7 @@ jobs:
                                  # Final Assessment
                  Write-Host ""
                  Write-Host "=== MPI Test Results Summary ==="
-                 $overall_success = ($version_exit_code -eq 0 -and $single_success -and $multi_success)
+                 $overall_success = ($version_exit_code -eq 0 -and $script:single_success -and $script:multi_success)
                  
                  if ($overall_success) {
                    Write-Host "[SUCCESS] Perfect! gfortran-compatible MPI fully functional!"
@@ -620,10 +623,10 @@ jobs:
                  } else {
                    Write-Host "[PARTIAL] MPI functionality assessment:"
                    Write-Host "   Startup test: $(if($version_exit_code -eq 0){'PASSED'}else{'FAILED'})"
-                   Write-Host "   Single-core computation: $(if($single_success){'PASSED'}else{'FAILED'})"  
-                   Write-Host "   Multi-core computation: $(if($multi_success){'PASSED'}else{'FAILED'})"
+                   Write-Host "   Single-core computation: $(if($script:single_success){'PASSED'}else{'FAILED'})"  
+                   Write-Host "   Multi-core computation: $(if($script:multi_success){'PASSED'}else{'FAILED'})"
                    Write-Host ""
-                                        if ($single_success -and $multi_success) {
+                                        if ($script:single_success -and $script:multi_success) {
                        Write-Host "[SUCCESS] Core MPI functionality is working!"
                        Write-Host "   Both computation tests passed - wheels are usable for MPI work."
                        Write-Host "   Success determined by WT.out generation despite exit code issues."
@@ -643,15 +646,17 @@ jobs:
                  Write-Host "   [RESULT] Windows MPI wheels are production-ready!"
                 
                 # Set appropriate CI exit status
-                if ($single_success -and $multi_success) {
+                if ($script:single_success -and $script:multi_success) {
                   Write-Host ""
                   Write-Host "[CI-SUCCESS] MPI functionality tests PASSED"
                   Write-Host "Windows wheels are fully functional for MPI computation!"
-                  # Don't exit with error if computation tests passed
+                  # Success! Exit normally without error
+                  Write-Host "[DEBUG] Both single and multi-core tests passed - CI will exit successfully"
                 } else {
                   Write-Host ""
                   Write-Host "[CI-ERROR] MPI functionality tests FAILED"
                   Write-Host "Windows wheels have compromised MPI functionality"
+                  Write-Host "[DEBUG] Test results - Single: $($script:single_success), Multi: $($script:multi_success)"
                   exit 1
                 }
                 
