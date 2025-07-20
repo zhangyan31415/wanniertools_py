@@ -98,7 +98,7 @@ jobs:
       
       - name: Test basic functionality
         run: |
-          python -c "import wannier_tools; print(f'✅ wannier_tools {wannier_tools.__version__} imported successfully')"
+          python -c "import wannier_tools; print(f'[OK] wannier_tools {wannier_tools.__version__} imported successfully')"
           python -c "import wannier_tools.check_deps; wannier_tools.check_deps.main()"
           wt-check-deps
   

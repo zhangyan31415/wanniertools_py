@@ -14,13 +14,13 @@ def check_command(cmd, description):
     try:
         path = shutil.which(cmd)
         if path:
-            print(f"✅ {description}: {path}")
+            print(f"[OK] {description}: {path}")
             return True
         else:
-            print(f"❌ {description}: Not found")
+            print(f"[FAIL] {description}: Not found")
             return False
     except Exception as e:
-        print(f"❌ {description}: Error checking - {e}")
+        print(f"[FAIL] {description}: Error checking - {e}")
         return False
 
 def check_conda_gfortran():
@@ -54,14 +54,14 @@ def check_conda_gfortran():
         for compiler in fortran_compilers:
             compiler_path = os.path.join(bin_path, compiler)
             if os.path.exists(compiler_path):
-                print(f"✅ gfortran in conda environment: {compiler_path}")
+                print(f"[OK] gfortran in conda environment: {compiler_path}")
                 return True
     
     # Also check with shutil.which for any of these compilers
     for compiler in fortran_compilers:
         path = shutil.which(compiler)
         if path and path.startswith(conda_prefix):
-            print(f"✅ gfortran in conda environment: {path}")
+            print(f"[OK] gfortran in conda environment: {path}")
             return True
     
     return False
@@ -82,7 +82,7 @@ def check_fortran_compiler():
             print("   Recommend installing conda gfortran: mamba install gfortran")
             return True
         
-        print("❌ No gfortran found in conda environment")
+        print("[FAIL] No gfortran found in conda environment")
         return False
     else:
         # System installation - check for any gfortran
@@ -100,9 +100,9 @@ def check_python_packages():
     for pkg in required_packages:
         try:
             __import__(pkg)
-            print(f"✅ Python package {pkg}: Installed")
+            print(f"[OK] Python package {pkg}: Installed")
         except ImportError:
-            print(f"❌ Python package {pkg}: Not installed")
+            print(f"[FAIL] Python package {pkg}: Not installed")
             missing.append(pkg)
     
     return len(missing) == 0, missing
@@ -143,7 +143,7 @@ def check_system_libraries():
             continue
     
     for lib, found in libraries_found.items():
-        status = "✅" if found else "❌"
+        status = "[OK]" if found else "[FAIL]"
         print(f"{status} Library {lib}: {'Found' if found else 'Not found'}")
     
     return all(libraries_found.values())
@@ -162,19 +162,19 @@ def install_missing_dependencies():
             try:
                 # Install gfortran if missing
                 if not check_conda_gfortran():
-                    print("📦 Installing gfortran in conda environment...")
+                    print("[INFO] Installing gfortran in conda environment...")
                     subprocess.run([conda_cmd, 'install', '-y', 'gfortran'], check=True)
-                    print("✅ Installed gfortran")
+                    print("[OK] Installed gfortran")
                 
                 # Also ensure we have BLAS/LAPACK/ARPACK
                 subprocess.run([
                     conda_cmd, 'install', '-y', 
                     'openblas', 'arpack', 'ninja'
                 ], check=True)
-                print("✅ Successfully installed dependencies with conda/mamba")
+                print("[OK] Successfully installed dependencies with conda/mamba")
                 return True
             except subprocess.CalledProcessError:
-                print("❌ Failed to install with conda/mamba")
+                print("[FAIL] Failed to install with conda/mamba")
                 return False
     
     # Fallback to pip for Python packages
@@ -183,9 +183,9 @@ def install_missing_dependencies():
             sys.executable, '-m', 'pip', 'install', 
             'ninja'
         ], check=True)
-        print("✅ Installed Python build dependencies")
+        print("[OK] Installed Python build dependencies")
     except subprocess.CalledProcessError:
-        print("❌ Failed to install Python dependencies")
+        print("[FAIL] Failed to install Python dependencies")
         return False
     
     return False
@@ -261,9 +261,9 @@ def main():
         
         # Try automatic installation
         if os.environ.get('CONDA_PREFIX'):
-            print("\n🤖 Attempting automatic installation...")
+            print("\n[INFO] Attempting automatic installation...")
             if install_missing_dependencies():
-                print("✅ Dependencies installed successfully!")
+                print("[OK] Dependencies installed successfully!")
                 return True
         
         print_installation_instructions()
