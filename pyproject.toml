@@ -82,34 +82,62 @@ before-build = [
     "ls /opt/python/"
 ]
 
-# macOS特定配置
-[tool.cibuildwheel.macos]
-archs = ["x86_64", "arm64"]
-# 通用环境变量，路径将在before-build中动态设置
-environment = { CC = "clang", CXX = "clang++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", MACOSX_DEPLOYMENT_TARGET = "14.0", WANNIERTOOLS_RUNTIME_MPI_ONLY = "true" }
+# macOS特定配置 - 支持三种架构
+[tool.cibuildwheel.macos] 
+archs = ["x86_64", "arm64", "universal2"]
+# 设置基础环境变量，架构特定配置在before-build中处理
+environment = { FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", MACOSX_DEPLOYMENT_TARGET = "14.0", WANNIERTOOLS_RUNTIME_MPI_ONLY = "true" }
 before-build = [
     "echo 'Building macOS wheels with runtime MPI detection'",
     "echo 'Target architecture: ${CIBW_ARCHS_MACOS:-unknown}'",
     "echo 'Build machine: $(uname -m)'",
-    # 检测Homebrew路径并写入环境文件
-    "if [ -d /opt/homebrew ]; then BREW_PREFIX=/opt/homebrew; else BREW_PREFIX=/usr/local; fi",
+    
+    # 架构特定的Homebrew路径配置
+    "if [[ '${CIBW_ARCHS_MACOS}' == 'arm64' ]]; then",
+    "  BREW_PREFIX=/opt/homebrew",
+    "  ARCH_FLAGS='-arch arm64'",
+    "  echo 'Configuring for Apple Silicon (ARM64)'",
+    "elif [[ '${CIBW_ARCHS_MACOS}' == 'universal2' ]]; then",
+    "  BREW_PREFIX=/opt/homebrew",
+    "  ARCH_FLAGS='-arch arm64 -arch x86_64'",
+    "  echo 'Configuring for Universal Binary (ARM64 + x86_64)'",
+    "else",
+    "  BREW_PREFIX=/usr/local", 
+    "  ARCH_FLAGS='-arch x86_64'",
+    "  echo 'Configuring for Intel (x86_64)'",
+    "fi",
     "echo \"Using Homebrew prefix: $BREW_PREFIX\"",
-    # 创建环境设置文件
-    "echo \"export FC=$BREW_PREFIX/bin/gfortran\" > /tmp/macos_build_env.sh",
+    
+    # 安装编译器和库
+    "brew install gcc openblas arpack",
+    
+    # 创建架构特定的环境设置
+    "echo \"export CC='clang $ARCH_FLAGS'\" > /tmp/macos_build_env.sh",
+    "echo \"export CXX='clang++ $ARCH_FLAGS'\" >> /tmp/macos_build_env.sh", 
+    "echo \"export FC='$BREW_PREFIX/bin/gfortran $ARCH_FLAGS'\" >> /tmp/macos_build_env.sh",
     "echo \"export PKG_CONFIG_PATH=$BREW_PREFIX/lib/pkgconfig:${PKG_CONFIG_PATH:-}\" >> /tmp/macos_build_env.sh",
-    "echo \"export LDFLAGS='-L$BREW_PREFIX/lib -Wl,-rpath,$BREW_PREFIX/lib ${LDFLAGS:-}'\" >> /tmp/macos_build_env.sh",
+    "echo \"export LDFLAGS='-L$BREW_PREFIX/lib -Wl,-rpath,$BREW_PREFIX/lib $ARCH_FLAGS ${LDFLAGS:-}'\" >> /tmp/macos_build_env.sh",
     "echo \"export CPPFLAGS='-I$BREW_PREFIX/include ${CPPFLAGS:-}'\" >> /tmp/macos_build_env.sh",
+    
     # 应用环境设置
     "source /tmp/macos_build_env.sh",
-    # 安装编译器
-    "brew install gcc",
+    
+    # 验证编译器配置
     "echo 'Compiler information:'",
+    "echo \"CC: $CC\"",
+    "echo \"CXX: $CXX\"", 
+    "echo \"FC: $FC\"",
     "which clang && clang --version | head -n1",
-    "which gfortran && gfortran --version | head -n1", 
-    "echo 'Build environment:'",
+    "which gfortran && gfortran --version | head -n1",
+    
+    # 验证架构支持
+    "echo 'Testing architecture-specific compilation:'",
+    "echo 'int main(){return 0;}' | $CC -x c - -o /tmp/test_$CIBW_ARCHS_MACOS && file /tmp/test_$CIBW_ARCHS_MACOS",
+    
+    "echo 'Build environment summary:'",
     "cat /tmp/macos_build_env.sh",
     "echo 'Available libraries:'",
-    "ls -la $BREW_PREFIX/lib/ | grep -E '(blas|arpack)' || echo 'No BLAS/ARPACK found'"
+    "ls -la $BREW_PREFIX/lib/ | grep -E '(blas|arpack|gfortran)' || echo 'Libraries not found'"
 ]
 
 # Windows特定配置
