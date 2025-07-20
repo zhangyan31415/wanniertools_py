@@ -64,33 +64,42 @@ jobs:
         env:
           # macOS: 让 cibuildwheel 分别构建每个架构，然后自动合并 universal2
           CIBW_ARCHS_MACOS: "x86_64 arm64"
-          # 架构特定的环境配置
-          CIBW_ENVIRONMENT_MACOS_ARM64: >
-            CC=clang
-            CXX=clang++
-            FC=$(brew --prefix)/bin/gfortran
-            MACOSX_DEPLOYMENT_TARGET=14.0
-            FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
-            CFLAGS="-arch arm64"
-            CXXFLAGS="-arch arm64"
-            LDFLAGS="-arch arm64 -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
-            ARCHFLAGS="-arch arm64"
-          CIBW_ENVIRONMENT_MACOS_X86_64: >
-            CC=clang
-            CXX=clang++
-            FC=$(brew --prefix)/bin/gfortran
-            MACOSX_DEPLOYMENT_TARGET=14.0
-            FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
-            CFLAGS="-arch x86_64"
-            CXXFLAGS="-arch x86_64"
-            LDFLAGS="-arch x86_64 -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
-            ARCHFLAGS="-arch x86_64"
           CIBW_BEFORE_BUILD_MACOS: |
+            set -ex
             brew install gcc openblas arpack
-            echo "Homebrew prefix: $(brew --prefix)"
-            echo "Host architecture: $(uname -m)"
-            echo "Target architecture: $CIBW_ARCHS"
-            echo "✅ Dependencies installed, architecture-specific flags set via environment"
+
+            export HOMEBREW_PREFIX=$(brew --prefix)
+            export CC=clang
+            export CXX=clang++
+            export FC="$HOMEBREW_PREFIX/bin/gfortran"
+            export MACOSX_DEPLOYMENT_TARGET="14.0"
+            export FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
+
+            echo "--- Environment setup for target: $CIBW_ARCHS ---"
+
+            if [[ "$CIBW_ARCHS" == "arm64" ]]; then
+              ARCH_FLAGS="-arch arm64"
+            elif [[ "$CIBW_ARCHS" == "x86_64" ]]; then
+              ARCH_FLAGS="-arch x86_64"
+            else
+              echo "ERROR: Unsupported architecture $CIBW_ARCHS"
+              exit 1
+            fi
+
+            export CFLAGS="$ARCH_FLAGS"
+            export CXXFLAGS="$ARCH_FLAGS"
+            export F90FLAGS="$ARCH_FLAGS"
+            export LDFLAGS="$ARCH_FLAGS -L$HOMEBREW_PREFIX/lib -Wl,-rpath,$HOMEBREW_PREFIX/lib"
+            export ARCHFLAGS="$ARCH_FLAGS"
+            
+            echo "--- Verifying environment ---"
+            echo "CC: $($CC --version | head -1)"
+            echo "CXX: $($CXX --version | head -1)"
+            echo "FC: $($FC --version | head -1)"
+            echo "CFLAGS: $CFLAGS"
+            echo "CXXFLAGS: $CXXFLAGS"
+            echo "LDFLAGS: $LDFLAGS"
+            echo "-----------------------------"
       
       - name: Upload wheels
         uses: actions/upload-artifact@v4
