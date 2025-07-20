@@ -91,6 +91,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       
       - name: Install wheel
+        shell: bash
         run: |
           ls -la ./wheels/
           pip install --find-links ./wheels wannier-tools
@@ -144,7 +145,7 @@ jobs:
           
           echo "=== 测试双核并行 ==="
           rm -f WT.out  # 清理之前的输出
-          timeout 60 mpirun -np 2 wt-py || echo "双核测试完成(timeout)"
+          timeout 60 mpirun --oversubscribe -np 2 wt-py || echo "双核测试完成(timeout)"
           if [ -f WT.out ]; then
             cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
             echo "双核结果: $cores"
