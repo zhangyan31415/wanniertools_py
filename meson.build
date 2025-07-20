@@ -110,68 +110,21 @@ endif
 
 # ---- Use meson dependency() for automatic library detection -------------------------
 # Try to find MPI dependency
-# On Windows, prioritize Microsoft MPI for compatibility
+# On Windows, use MSYS2 gfortran-compatible MPI to avoid ABI issues
 if build_machine.system() == 'windows'
-  mpi_dep = dependency('', required: false)  # Initialize as not found
+  message('Windows detected: using MSYS2 gfortran-compatible MPI for ABI compatibility')
+  message('Reason: Official MS-MPI uses Intel Fortran ABI, incompatible with gfortran')
   
-  message('Windows detected: prioritizing Microsoft MPI for wheel compatibility')
+  # Use standard pkg-config detection which will find MSYS2 MPI
+  mpi_dep = dependency('mpi', language: 'fortran', required: false)
   
-  # Force MS-MPI detection first
-  msmpi_inc = run_command('python', '-c', 
-    'import os; print(os.environ.get("MSMPI_INC", "C:/Program Files (x86)/Microsoft SDKs/MPI/Include"))', 
-    check: false).stdout().strip()
-  msmpi_lib64 = run_command('python', '-c', 
-    'import os; print(os.environ.get("MSMPI_LIB64", "C:/Program Files (x86)/Microsoft SDKs/MPI/Lib/x64"))', 
-    check: false).stdout().strip()
-    
-  message('MS-MPI paths:')
-  message('  Include: ' + msmpi_inc)
-  message('  Library: ' + msmpi_lib64)
-  
-  # Verify MS-MPI installation
-  msmpi_h_check = run_command('python', '-c', 
-    'import os; print("yes" if os.path.exists(r"' + join_paths(msmpi_inc, 'mpi.h') + '") else "no")', 
-    check: false).stdout().strip()
-  msmpi_lib_check = run_command('python', '-c', 
-    'import os; print("yes" if os.path.exists(r"' + join_paths(msmpi_lib64, 'msmpi.lib') + '") else "no")', 
-    check: false).stdout().strip()
-    
-  message('MS-MPI verification:')
-  message('  mpi.h found: ' + msmpi_h_check)
-  message('  msmpi.lib found: ' + msmpi_lib_check)
-    
-  if msmpi_h_check == 'yes' and msmpi_lib_check == 'yes'
-    message('✅ MS-MPI SDK detected, configuring for GFortran')
-    
-    # Configure for GFortran + MS-MPI explicitly
-    mpi_dep = declare_dependency(
-      include_directories: include_directories(msmpi_inc),
-      link_args: ['-L' + msmpi_lib64, '-lmsmpi'],
-      compile_args: ['-I' + msmpi_inc]
-    )
-    message('✅ Successfully configured MS-MPI dependency for Windows wheels')
-    message('    This should resolve ACCESS_VIOLATION errors')
+  if mpi_dep.found()
+    message('✅ Found gfortran-compatible MPI via pkg-config (likely MSYS2)')
+    message('    This resolves Intel/gfortran ABI mismatch issues')
   else
-    message('❌ MS-MPI SDK not found at expected paths')
-    message('    Will attempt fallback MPI detection')
-    
-    # Fallback to other MPI implementations only if MS-MPI not found
-    # Try Intel MPI
-    impi_root = run_command('python', '-c', 
-      'import os; print(os.environ.get("I_MPI_ROOT", os.environ.get("CONDA_PREFIX", "")))', 
-      check: false).stdout().strip()
-    
-    if impi_root != ''
-      message('Found Intel MPI environment, trying Intel MPI...')
-      # Intel MPI configuration code would go here
-      # But for wheels compatibility, we prefer MS-MPI
-    endif
-    
-    # Final fallback
-    if not mpi_dep.found()
-      message('⚠️  No MPI found - building without MPI support')
-      message('    This may cause runtime errors if MPI is expected')
-    endif
+    message('⚠️  No gfortran-compatible MPI found')
+    message('    Building without MPI support (runtime detection only)')
+    message('    Install: pacman -S mingw-w64-x86_64-msmpi for gfortran compatibility')
   endif
 else
   # Linux/macOS: use standard MPI detection
@@ -216,11 +169,13 @@ else
     # For manylinux builds, use explicit library paths
     link_args += ['-L/usr/lib64', '-L/usr/local/lib64', '-L/usr/local/lib', '-lopenblas']
   elif build_machine.system() == 'windows'
-    message('Windows: Configuring OpenBLAS from MSYS2')
+    message('Windows: Configuring single-threaded OpenBLAS from MSYS2 for MPI compatibility')
     # Add MSYS2 library and include paths
     link_args += ['-LC:/msys64/mingw64/lib', '-lopenblas']
     # Ensure DLL search path includes MSYS2 bin directory
     message('Windows: Adding MSYS2 bin to library search path for DLL discovery')
+    # Add compile flags to ensure single-threaded operation for MPI compatibility
+    message('Windows: Configuring OpenBLAS for single-threaded mode to prevent MPI conflicts')
   endif
 endif
 

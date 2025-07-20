@@ -115,19 +115,18 @@ before-build = [
 # Windows特定配置
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
-environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", MSMPI_INC = "C:\\Program Files (x86)\\Microsoft SDKs\\MPI\\Include", MSMPI_LIB64 = "C:\\Program Files (x86)\\Microsoft SDKs\\MPI\\Lib\\x64" }
+environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1" }
 before-build = [
-    "echo Installing dependencies for Windows wheels with MS-MPI compatibility",
+    "echo Installing dependencies for Windows wheels with gfortran-compatible MPI",
     "pip install delvewheel",
-    "echo Installing OpenBLAS via MSYS2...",
+    "echo Installing gfortran-compatible libraries via MSYS2...",
     "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-openblas",
-    "echo Installing Microsoft MPI SDK for build compatibility...",
-    "powershell -Command \"Invoke-WebRequest -Uri 'https://download.microsoft.com/download/a/5/2/a5207ca5-1203-491a-8fb8-906fd68ae623/msmpisdk.msi' -OutFile 'msmpisdk.msi'\"",
-    "powershell -Command \"Start-Process -FilePath 'msiexec.exe' -ArgumentList '/i', 'msmpisdk.msi', '/quiet', '/norestart' -Wait -NoNewWindow\"",
-    "echo Configuring build environment for MS-MPI...",
-    "echo MSMPI_INC=%MSMPI_INC%",
-    "echo MSMPI_LIB64=%MSMPI_LIB64%",
+    "echo Installing MSYS2 gfortran-compatible MS-MPI...",
+    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-msmpi",
+    "echo Configuring PATH for MSYS2 gfortran+MPI toolchain...",
     "set PATH=C:\\msys64\\mingw64\\bin;%PATH%",
-    "echo Build environment configured for MS-MPI compatibility"
+    "echo Verifying gfortran-compatible MPI installation...",
+    "C:\\msys64\\mingw64\\bin\\mpiexec.exe --version",
+    "echo Build environment configured for gfortran+MS-MPI compatibility"
 ]
-repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel} --add-path C:\\msys64\\mingw64\\bin --add-path \"C:\\Program Files\\Microsoft MPI\\Bin\"" 
+repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel} --add-path C:\\msys64\\mingw64\\bin" 
