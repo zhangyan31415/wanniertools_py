@@ -61,7 +61,17 @@ jobs:
         uses: pypa/cibuildwheel@v2.21.3
         with:
           output-dir: wheelhouse
-        # 所有配置都在 pyproject.toml 中，不在这里设置环境变量
+        env:
+          # macOS: 按照最佳实践设置编译器环境
+          CIBW_BEFORE_BUILD_MACOS: >
+            brew install gcc openblas arpack &&
+            echo "Homebrew prefix: $(brew --prefix)"
+          CIBW_ENVIRONMENT_MACOS: >
+            CC=clang
+            CXX=clang++
+            FC=$(brew --prefix)/bin/gfortran
+            MACOSX_DEPLOYMENT_TARGET=14.0
+            FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
       
       - name: Upload wheels
         uses: actions/upload-artifact@v4
