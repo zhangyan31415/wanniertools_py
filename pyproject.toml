@@ -133,7 +133,8 @@ before-build = [
     "dir C:\\msys64\\mingw64\\lib\\*blas* || echo No BLAS libs found",
     "dir C:\\msys64\\mingw64\\lib\\*lapack* || echo No LAPACK libs found",
     "echo Checking DLL availability:",
-    "where libgfortran*.dll || echo libgfortran not in PATH",
-    "where libopenblas*.dll || echo libopenblas not in PATH"
+    "dir C:\\msys64\\mingw64\\bin\\libgfortran*.dll || echo libgfortran not found",
+    "dir C:\\msys64\\mingw64\\bin\\libopenblas*.dll || echo libopenblas not found",
+    "echo DLL check complete"
 ]
 repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}" 
