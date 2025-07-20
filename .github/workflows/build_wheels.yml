@@ -207,10 +207,20 @@ jobs:
           fi
 
   test_macos:
-    name: Test macOS wheel
+    name: Test macOS wheel (${{ matrix.runner-arch }})
     needs: build_wheels
-    runs-on: macos-latest
+    runs-on: ${{ matrix.runner }}
     if: always()  # Run even if some builds failed
+    
+    strategy:
+      matrix:
+        include:
+          - runner: macos-latest    # ARM64 (Apple Silicon M1/M2)
+            runner-arch: arm64
+            wheel-pattern: "*arm64.whl"
+          - runner: macos-13        # x86_64 (Intel)
+            runner-arch: x86_64  
+            wheel-pattern: "*x86_64.whl"
     
     steps:
       - name: Checkout code
@@ -238,26 +248,42 @@ jobs:
           echo "MPI installation path:"
           which mpirun
       
-      - name: Install wheel
+      - name: Install wheel (${{ matrix.runner-arch }})
         shell: bash
         run: |
+          echo "🔍 Available wheels:"
           ls -la ./wheels/ || echo "No wheels found"
-          if [ "$(ls -A ./wheels/ 2>/dev/null)" ]; then
-            pip install --find-links ./wheels wannier-tools
+          
+          echo "🎯 Looking for ${{ matrix.runner-arch }} wheel pattern: ${{ matrix.wheel-pattern }}"
+          target_wheel=$(ls ./wheels/${{ matrix.wheel-pattern }} 2>/dev/null | head -1)
+          
+          if [ -n "$target_wheel" ] && [ -f "$target_wheel" ]; then
+            echo "✅ Found ${{ matrix.runner-arch }} wheel: $target_wheel"
+            pip install "$target_wheel"
+            echo "📊 Installed wheel info:"
+            pip show wannier-tools
           else
-            echo "❌ No macOS wheels available - build may have failed"
+            echo "❌ No ${{ matrix.runner-arch }} wheel found matching ${{ matrix.wheel-pattern }}"
+            echo "Available wheels:"
+            ls -la ./wheels/ || echo "No wheels directory"
             exit 1
           fi
       
       - name: Test basic functionality
         run: |
+          echo "🧪 Testing ${{ matrix.runner-arch }} wheel on ${{ matrix.runner }}"
+          echo "System info:"
+          uname -m
+          python -c "import platform; print(f'Python platform: {platform.platform()}')"
+          python -c "import platform; print(f'Architecture: {platform.machine()}')"
+          
           python -c "import wannier_tools; print(f'[OK] wannier_tools {wannier_tools.__version__} imported successfully')"
           python -c "import wannier_tools.check_deps; wannier_tools.check_deps.main()"
           wt-check-deps
       
-      - name: Test MPI functionality (macOS)
+      - name: Test MPI functionality (macOS ${{ matrix.runner-arch }})
         run: |
-          echo "🚀 Testing MPI functionality (OpenMPI already installed)"
+          echo "🚀 Testing MPI functionality on ${{ matrix.runner-arch }} (OpenMPI already installed)"
           mpirun --version
           
           cd examples/Haldane_model
@@ -272,7 +298,7 @@ jobs:
           echo "$wt_output"
           
           if [ $wt_exit_code -ne 0 ]; then
-            echo "❌ macOS单核测试失败，退出码: $wt_exit_code"
+            echo "❌ macOS ${{ matrix.runner-arch }} 单核测试失败，退出码: $wt_exit_code"
             exit 1
           fi
           
@@ -283,7 +309,7 @@ jobs:
           
           if [ -f WT.out ]; then
             cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
-            echo "单核结果: $cores"
+            echo "[${{ matrix.runner-arch }}] 单核结果: $cores"
           else
             echo "❌ 未生成WT.out文件"
             exit 1
@@ -301,7 +327,7 @@ jobs:
           echo "$mpi_output"
           
           if [ $mpi_exit_code -ne 0 ]; then
-            echo "❌ macOS双核测试失败，退出码: $mpi_exit_code"
+            echo "❌ macOS ${{ matrix.runner-arch }} 双核测试失败，退出码: $mpi_exit_code"
             exit 1
           fi
           
@@ -312,7 +338,7 @@ jobs:
           
           if [ -f WT.out ]; then
             cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
-            echo "双核结果: $cores"
+            echo "[${{ matrix.runner-arch }}] 双核结果: $cores"
           else
             echo "❌ 双核测试未生成WT.out文件"
             exit 1
