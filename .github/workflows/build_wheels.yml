@@ -308,9 +308,14 @@ jobs:
           pip install --find-links wheels wannier-tools
       
       - name: Test basic functionality
+        shell: pwsh
         run: |
+          Write-Host "=== 基础功能测试 ==="
+          Write-Host "测试Python导入："
           python -c "import wannier_tools; print(f'[OK] wannier_tools {wannier_tools.__version__} imported successfully')"
+          Write-Host "测试依赖检查："
           python -c "import wannier_tools.check_deps; wannier_tools.check_deps.main()"
+          Write-Host "测试wt-check-deps命令："
           wt-check-deps
       
       - name: Test MPI functionality (Windows) 
@@ -319,10 +324,29 @@ jobs:
           Write-Host "=== Windows MPI测试 ==="
           Write-Host "Note: Windows MPI安装较复杂，目前只测试运行时MPI检测"
           
+          Write-Host "=== 调试环境信息 ==="
+          Write-Host "Python版本："
+          python --version
+          Write-Host "检查wt-py.exe命令："
+          Get-Command wt-py.exe -ErrorAction SilentlyContinue | Format-List
+          Write-Host "测试Python导入："
+          python -c "import sys; print('Python path:', sys.executable)"
+          python -c "try: import wannier_tools; print('✅ wannier_tools导入成功'); except Exception as e: print('❌ 导入失败:', e)"
+          
           cd examples/Haldane_model
           Write-Host "=== 测试单核运行 ==="
           
-          # 捕获wt-py的输出和退出码
+          # 首先尝试直接Python调用
+          Write-Host "尝试直接Python调用："
+          try {
+            $python_output = python -c "import wannier_tools.cli; wannier_tools.cli.main()" 2>&1 | Out-String
+            Write-Host "Python调用结果: $python_output"
+          } catch {
+            Write-Host "Python调用失败: $_"
+          }
+          
+          # 然后尝试wt-py.exe
+          Write-Host "尝试wt-py.exe命令："
           try {
             $wt_output = wt-py.exe 2>&1 | Out-String
             $wt_exit_code = $LASTEXITCODE
