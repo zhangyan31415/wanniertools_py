@@ -303,15 +303,9 @@ jobs:
           python-version: '3.9'
       
       - name: Install wheel
-        shell: bash
         run: |
-          ls -la ./wheels/ || echo "No wheels found"
-          if [ "$(ls -A ./wheels/ 2>/dev/null)" ]; then
-            pip install --find-links ./wheels wannier-tools
-          else
-            echo "❌ No Windows wheels available - build may have failed"
-            exit 1
-          fi
+          dir wheels
+          pip install --find-links wheels wannier-tools
       
       - name: Test basic functionality
         run: |
@@ -320,53 +314,60 @@ jobs:
           wt-check-deps
       
       - name: Test MPI functionality (Windows) 
-        shell: bash
+        shell: pwsh
         run: |
-          echo "=== Windows MPI测试 ==="
-          echo "Note: Windows MPI安装较复杂，目前只测试运行时MPI检测"
+          Write-Host "=== Windows MPI测试 ==="
+          Write-Host "Note: Windows MPI安装较复杂，目前只测试运行时MPI检测"
           
           cd examples/Haldane_model
-          echo "=== 测试单核运行 ==="
+          Write-Host "=== 测试单核运行 ==="
           
           # 捕获wt-py的输出和退出码
-          set +e  # 允许命令失败而不退出脚本
-          wt_output=$(wt-py 2>&1)
-          wt_exit_code=$?
-          set -e  # 重新启用错误时退出
+          try {
+            $wt_output = wt-py.exe 2>&1 | Out-String
+            $wt_exit_code = $LASTEXITCODE
+          } catch {
+            Write-Host "❌ wt-py.exe执行失败: $_"
+            exit 1
+          }
           
-          echo "$wt_output"  # 显示完整输出
+          Write-Host $wt_output  # 显示完整输出
           
           # 检查多种失败条件
-          if [ $wt_exit_code -ne 0 ]; then
-            echo "❌ wt-py命令返回错误退出码: $wt_exit_code"
+          if ($wt_exit_code -ne 0) {
+            Write-Host "❌ wt-py命令返回错误退出码: $wt_exit_code"
             exit 1
-          fi
+          }
           
-          if echo "$wt_output" | grep -q "FATAL"; then
-            echo "❌ 检测到FATAL错误"
+          if ($wt_output -match "FATAL") {
+            Write-Host "❌ 检测到FATAL错误"
             exit 1
-          fi
+          }
           
-          if echo "$wt_output" | grep -q "DLL load failed"; then
-            echo "❌ 检测到DLL加载错误"
+          if ($wt_output -match "DLL load failed") {
+            Write-Host "❌ 检测到DLL加载错误"
             exit 1
-          fi
+          }
           
-          if echo "$wt_output" | grep -q "Could not import"; then
-            echo "❌ 检测到导入错误"
+          if ($wt_output -match "Could not import") {
+            Write-Host "❌ 检测到导入错误"
             exit 1
-          fi
+          }
           
           # 检查是否生成了WT.out文件
-          if [ -f WT.out ]; then
-            cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
-            echo "单核结果: $cores"
-          else
-            echo "❌ 未生成WT.out文件，说明wt-py实际未成功运行"
+          if (Test-Path "WT.out") {
+            $cores = Get-Content "WT.out" | Select-String "CPU cores" | Select-Object -Last 1
+            if ($cores) {
+              Write-Host "单核结果: $cores"
+            } else {
+              Write-Host "单核结果: 未找到CPU cores信息"
+            }
+          } else {
+            Write-Host "❌ 未生成WT.out文件，说明wt-py实际未成功运行"
             exit 1
-          fi
+          }
           
-          echo "=== Windows暂时跳过多核测试（需要MS-MPI安装） ==="
+          Write-Host "=== Windows暂时跳过多核测试（需要MS-MPI安装） ==="
   
   collect_wheels:
     name: Collect all wheels
