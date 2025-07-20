@@ -65,45 +65,39 @@ jobs:
         env:
           # macOS: 让 cibuildwheel 分别构建每个架构，然后自动合并 universal2
           CIBW_ARCHS_MACOS: "x86_64 arm64"
-          # 设置macOS最低版本，根据架构动态调整以兼容 Ventura
-          CIBW_ENVIRONMENT_MACOS: |
-            if [[ "$(uname -m)" == "arm64" ]]; then
-              MACOSX_DEPLOYMENT_TARGET=14.0
-            else
-              MACOSX_DEPLOYMENT_TARGET=13.0
-            fi
           CIBW_BEFORE_BUILD_MACOS: |
             brew install gcc openblas arpack
+            echo "Homebrew prefix: $(brew --prefix)"
             echo "Host architecture: $(uname -m)"
             echo "Target architecture: $CIBW_ARCHS"
             
-            # Set compilers consistently using brew prefix
-            export CC=clang
-            export CXX=clang++
-            export FC="$(brew --prefix)/bin/gfortran"
-            
-            # Use cibuildwheel's official $CIBW_ARCHS variable for reliable detection
+            # 根据架构动态设置 MACOSX_DEPLOYMENT_TARGET
             if [[ "$CIBW_ARCHS" == "arm64" ]]; then
+              export MACOSX_DEPLOYMENT_TARGET=14.0  # ARM64: 支持 Sonoma+
               export CFLAGS="-arch arm64"
-              export LDFLAGS="-arch arm64 -L$(brew --prefix)/lib"
-              echo "✅ Configured for ARM64 target"
+              export CXXFLAGS="-arch arm64"
+              export LDFLAGS="-arch arm64 -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
+              echo "✅ Configured for ARM64 target (macOS 14.0+)"
             elif [[ "$CIBW_ARCHS" == "x86_64" ]]; then
+              export MACOSX_DEPLOYMENT_TARGET=13.0  # Intel: 兼容 Ventura
               export CFLAGS="-arch x86_64"
-              export LDFLAGS="-arch x86_64 -L$(brew --prefix)/lib"
-              echo "✅ Configured for x86_64 target"
+              export CXXFLAGS="-arch x86_64"
+              export LDFLAGS="-arch x86_64 -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
+              echo "✅ Configured for x86_64 target (macOS 13.0+)"
             else
-              echo "❌ Unknown architecture: '$CIBW_ARCHS'"
+              echo "❌ Unknown architecture: $CIBW_ARCHS"
               exit 1
             fi
             
-            # Set shared compiler flags
-            export CXXFLAGS="$CFLAGS"
+            # 设置基础编译器
+            export CC=clang
+            export CXX=clang++
+            export FC=$(brew --prefix)/bin/gfortran
+            export FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
             export ARCHFLAGS="$CFLAGS"
             
-            echo "Final compiler flags:"
-            echo "CC=$CC"
-            echo "CXX=$CXX"
-            echo "FC=$FC"
+            echo "Final configuration:"
+            echo "MACOSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET"
             echo "CFLAGS=$CFLAGS"
             echo "LDFLAGS=$LDFLAGS"
       
@@ -243,6 +237,16 @@ jobs:
             wheel-pattern: "*x86_64.whl"
     
     steps:
+      - name: Log macOS version and architecture
+        run: |
+          echo "🔍 Test Environment Information:"
+          echo "macOS Version:"
+          sw_vers
+          echo "Host Architecture:"
+          uname -m
+          echo "Homebrew prefix:"
+          echo $(brew --prefix)
+          
       - name: Checkout code
         uses: actions/checkout@v4
       
@@ -309,9 +313,9 @@ jobs:
           cd examples/Haldane_model
           echo "=== 测试单核运行 ==="
           
-          # 强化错误检测 - 单核测试 (使用 mpirun 保证MPI环境)
+          # 强化错误检测 - 单核测试
           set +e
-          wt_output=$(mpirun --oversubscribe -np 1 wt-py 2>&1)
+          wt_output=$(wt-py 2>&1)
           wt_exit_code=$?
           set -e
           
