@@ -312,8 +312,13 @@ else
 endif
 
 # Add MPI preprocessor definition if MPI is found
-if mpi_dep.found()
+# For wheels/packaging builds, we use runtime MPI detection only
+runtime_mpi_only = run_command('python', '-c', 'import os; print(os.environ.get("WANNIERTOOLS_RUNTIME_MPI_ONLY", "false"))', check: false).stdout().strip()
+if mpi_dep.found() and runtime_mpi_only != 'true'
   fortran_args += ['-DMPI']
+  message('Building with compile-time MPI support')
+else
+  message('Building with runtime-only MPI detection (wheels mode)')
 endif
 
 if build_machine.system() == 'windows' and fortran_compiler.get_id().startswith('intel')

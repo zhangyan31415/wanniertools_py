@@ -75,7 +75,7 @@ test-requires = ["pytest"]
 [tool.cibuildwheel.linux]
 archs = ["x86_64"]
 manylinux-x86_64-image = "wanniertools-builder-nompi"
-environment = { FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch" }
+environment = { FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", WANNIERTOOLS_RUNTIME_MPI_ONLY = "true" }
 before-build = [
     "echo 'Building Linux wheels with runtime MPI detection'",
     "echo 'Available Python versions:'",
@@ -85,7 +85,7 @@ before-build = [
 # macOS特定配置
 [tool.cibuildwheel.macos]
 archs = ["x86_64", "arm64"]
-environment = { CC = "clang", CXX = "clang++", FC = "/opt/homebrew/bin/gfortran", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", PKG_CONFIG_PATH = "/opt/homebrew/lib/pkgconfig", LDFLAGS = "-L/opt/homebrew/lib -Wl,-rpath,/opt/homebrew/lib", CPPFLAGS = "-I/opt/homebrew/include", MACOSX_DEPLOYMENT_TARGET = "14.0" }
+environment = { CC = "clang", CXX = "clang++", FC = "/opt/homebrew/bin/gfortran", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", PKG_CONFIG_PATH = "/opt/homebrew/lib/pkgconfig", LDFLAGS = "-L/opt/homebrew/lib -Wl,-rpath,/opt/homebrew/lib", CPPFLAGS = "-I/opt/homebrew/include", MACOSX_DEPLOYMENT_TARGET = "14.0", WANNIERTOOLS_RUNTIME_MPI_ONLY = "true" }
 before-build = [
     "echo 'Building macOS wheels with runtime MPI detection'",
     "echo 'Compiler versions:'",
@@ -98,7 +98,7 @@ before-build = [
 # Windows特定配置
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
-environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch" }
+environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", WANNIERTOOLS_RUNTIME_MPI_ONLY = "true" }
 before-build = [
     "echo Building Windows wheels with MinGW toolchain",
     "echo Installing OpenBLAS via MSYS2...",
