@@ -85,6 +85,9 @@ jobs:
           CIBW_ARCHS_MACOS: ${{ matrix.cibw_archs }}  
           CIBW_ARCHS_WINDOWS: ${{ matrix.cibw_archs }}
           
+          # 增加构建详细度以调试交叉编译
+          CIBW_BUILD_VERBOSITY: 3
+          
           # macOS部署目标配置
           CIBW_ENVIRONMENT_MACOS: ${{ matrix.macos_target && format('MACOSX_DEPLOYMENT_TARGET={0}', matrix.macos_target) || '' }}
           
@@ -92,17 +95,41 @@ jobs:
             brew install gcc openblas arpack
             echo "🎯 Building for ${{ matrix.cibw_archs }} with deployment target ${{ matrix.macos_target }}"
             
-            # 设置编译器
+            # 显示构建环境信息
+            echo "=== Build Environment Debug ==="
+            echo "Host arch: $(uname -m)"
+            echo "Target arch: ${{ matrix.cibw_archs }}"
+            echo "Homebrew prefix: $(brew --prefix)"
+            echo "Available compilers:"
+            which clang && clang --version | head -1
+            which gfortran && gfortran --version | head -1
+            
+            # 设置编译器和标志 - 确保传递给meson
             export CC=clang
             export CXX=clang++
             export FC=$(brew --prefix)/bin/gfortran
             export FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
             
-            # 设置架构特定的编译标志
+            # 关键：设置架构特定的编译标志
             export CFLAGS="-arch ${{ matrix.cibw_archs }}"
             export CXXFLAGS="-arch ${{ matrix.cibw_archs }}"
             export LDFLAGS="-arch ${{ matrix.cibw_archs }} -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
             export ARCHFLAGS="-arch ${{ matrix.cibw_archs }}"
+            
+            # 额外的meson特定环境变量
+            export MACOSX_DEPLOYMENT_TARGET=${{ matrix.macos_target }}
+            export _PYTHON_HOST_PLATFORM="macosx-${{ matrix.macos_target }}-${{ matrix.cibw_archs }}"
+            
+            echo "=== Final Environment ==="
+            echo "CC=$CC"
+            echo "CXX=$CXX" 
+            echo "FC=$FC"
+            echo "CFLAGS=$CFLAGS"
+            echo "CXXFLAGS=$CXXFLAGS"
+            echo "LDFLAGS=$LDFLAGS"
+            echo "MACOSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET"
+            echo "ARCHFLAGS=$ARCHFLAGS"
+            echo "_PYTHON_HOST_PLATFORM=$_PYTHON_HOST_PLATFORM"
             
             echo "✅ Configured for ${{ matrix.cibw_archs }} target"
       
