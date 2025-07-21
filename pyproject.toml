@@ -11,8 +11,8 @@ build-backend = "mesonpy"
 
 [project]
 name = "wannier-tools"
-version = "2.7.1"
-description = "WannierTools: An open-source software package for novel topological materials"
+version = "0.0.1"
+description = "A Python wrapper for the WannierTools code"
 authors = [
     { name = "QuanSheng Wu", email = "wuquansheng@gmail.com" },
     { name = "ShengNan Zhang" },
