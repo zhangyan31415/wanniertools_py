@@ -143,10 +143,13 @@ jobs:
           path: ./wheelhouse/*.whl
   
   test_linux:
-    name: Test Linux wheel
+    name: Test Linux wheel (Python ${{ matrix.python-version }})
     needs: build_wheels
     runs-on: ubuntu-latest
     if: always()  # Run even if some builds failed
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
     
     steps:
       - name: Checkout code
@@ -159,10 +162,10 @@ jobs:
           path: ./wheels
         continue-on-error: true
       
-      - name: Set up Python 3.9
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: ${{ matrix.python-version }}
       
       - name: Install MPI for testing
         run: |
@@ -178,11 +181,24 @@ jobs:
       - name: Install wheel
         shell: bash
         run: |
+          echo "🔍 Available wheels:"
           ls -la ./wheels/ || echo "No wheels found"
-          if [ "$(ls -A ./wheels/ 2>/dev/null)" ]; then
-            pip install --find-links ./wheels wannier-tools
+          
+          # 根据Python版本选择对应的轮子
+          python_short=$(python -c "import sys; print(f'cp{sys.version_info.major}{sys.version_info.minor}')")
+          echo "🎯 Looking for wheel matching Python version: $python_short"
+          
+          target_wheel=$(ls ./wheels/*${python_short}*linux*.whl 2>/dev/null | head -1)
+          
+          if [ -n "$target_wheel" ] && [ -f "$target_wheel" ]; then
+            echo "✅ Found matching Linux wheel: $target_wheel"
+            pip install "$target_wheel"
+            echo "📊 Installed wheel info:"
+            pip show wannier-tools
           else
-            echo "❌ No Linux wheels available - build may have failed"
+            echo "❌ No Linux wheel found for Python $python_short"
+            echo "Available wheels:"
+            ls -la ./wheels/ || echo "No wheels directory"
             exit 1
           fi
       
@@ -256,10 +272,13 @@ jobs:
           fi
 
   test_macos:
-    name: Test macOS ARM64 wheel
+    name: Test macOS ARM64 wheel (Python ${{ matrix.python-version }})
     needs: build_wheels
     runs-on: macos-latest
     if: always()
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
 
     steps:
       - name: Log macOS ARM64 test environment
@@ -267,6 +286,7 @@ jobs:
           echo "🔍 macOS ARM64 Test Environment:"
           sw_vers
           uname -m
+          echo "Testing Python ${{ matrix.python-version }}"
       
       - name: Checkout code
         uses: actions/checkout@v4
@@ -278,10 +298,10 @@ jobs:
           path: ./wheels
         continue-on-error: true
       
-      - name: Set up Python 3.9
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: ${{ matrix.python-version }}
       
       - name: Install MPI for testing
         run: |
@@ -299,16 +319,19 @@ jobs:
           echo "🔍 Available wheels:"
           ls -la ./wheels/ || echo "No wheels found"
           
-          echo "🎯 Looking for arm64 wheel pattern: *arm64.whl"
-          target_wheel=$(ls ./wheels/*arm64.whl 2>/dev/null | head -1)
+          # 根据Python版本选择对应的轮子
+          python_short=$(python -c "import sys; print(f'cp{sys.version_info.major}{sys.version_info.minor}')")
+          echo "🎯 Looking for wheel matching Python version: $python_short"
+          
+          target_wheel=$(ls ./wheels/*${python_short}*arm64.whl 2>/dev/null | head -1)
           
           if [ -n "$target_wheel" ] && [ -f "$target_wheel" ]; then
-            echo "✅ Found ARM64 wheel: $target_wheel"
+            echo "✅ Found matching ARM64 wheel: $target_wheel"
             pip install "$target_wheel"
             echo "📊 Installed wheel info:"
             pip show wannier-tools
           else
-            echo "❌ No ARM64 wheel found matching *arm64.whl"
+            echo "❌ No ARM64 wheel found for Python $python_short"
             echo "Available wheels:"
             ls -la ./wheels/ || echo "No wheels directory"
             exit 1
@@ -390,10 +413,13 @@ jobs:
           fi
 
   test_windows:
-    name: Test Windows wheel
+    name: Test Windows wheel (Python ${{ matrix.python-version }})
     needs: build_wheels
     runs-on: windows-latest
     if: always()  # Run even if some builds failed
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
     defaults:
       run:
         shell: cmd
@@ -409,10 +435,10 @@ jobs:
           path: ./wheels
         continue-on-error: true
       
-      - name: Set up Python 3.9
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: ${{ matrix.python-version }}
       
       - name: Install Microsoft MPI
         shell: pwsh
@@ -442,9 +468,28 @@ jobs:
           Write-Host "✅ MPI安装完成！"
       
       - name: Install wheel
+        shell: pwsh
         run: |
-          dir wheels
-          pip install --find-links wheels wannier-tools
+          Write-Host "🔍 Available wheels:"
+          Get-ChildItem -Path "./wheels" -Recurse | Format-Table Name, Length
+          
+          # 根据Python版本选择对应的轮子
+          $pythonVersion = python -c "import sys; print(f'cp{sys.version_info.major}{sys.version_info.minor}')"
+          Write-Host "🎯 Looking for wheel matching Python version: $pythonVersion"
+          
+          $targetWheel = Get-ChildItem -Path "./wheels" -Filter "*$pythonVersion*win*.whl" | Select-Object -First 1
+          
+          if ($targetWheel) {
+            Write-Host "✅ Found matching Windows wheel: $($targetWheel.Name)"
+            pip install "$($targetWheel.FullName)"
+            Write-Host "📊 Installed wheel info:"
+            pip show wannier-tools
+          } else {
+            Write-Host "❌ No Windows wheel found for Python $pythonVersion"
+            Write-Host "Available wheels:"
+            Get-ChildItem -Path "./wheels" -Recurse | Format-Table Name, Length
+            exit 1
+          }
       
       - name: Test basic functionality
         shell: pwsh
