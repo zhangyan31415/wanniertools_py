@@ -1,5 +1,35 @@
 name: Build and Test WannierTools Cross-Platform Wheels
 
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║                             🛠️  开发者配置区域                                    ║
+# ║                         Developer Configuration                              ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+# 
+# 🐍 支持的Python版本 (修改此处以更改构建的Python版本)
+# 格式: cp{major}{minor}-* (例如: cp38-* = Python 3.8.x, cp39-* = Python 3.9.x)
+# 
+# 📝 使用说明:
+# - 要构建特定版本: 修改 PYTHON_VERSIONS
+# - 要跳过某版本: 从列表中删除对应条目
+# - 要添加新版本: 在列表中添加 cp{版本号}-*
+# 
+# 💡 示例:
+# - 只构建 3.9-3.11: "cp39-* cp310-* cp311-*"
+# - 只构建 3.10: "cp310-*"
+# - 构建所有: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
+# 
+env:
+  # Python版本配置 - 在此处修改支持的Python版本
+  PYTHON_VERSIONS: "cp39-* cp310-* cp311-* cp312-*"
+  
+  # 其他构建配置
+  BUILD_VERBOSITY: "3"                    # 构建详细度 (0-3, 推荐3用于调试)
+  MACOS_DEPLOYMENT_TARGET: "14.0"         # macOS最低版本要求 (支持Apple Silicon)
+  
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║                                🚀 工作流配置                                   ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+
 on:
   push:
     branches: [ main, master ]
@@ -25,7 +55,6 @@ jobs:
           # macOS ARM64 (Apple Silicon)
           - os: macos-latest  
             cibw_archs: arm64
-            macos_target: "14.0"
             
           # Windows AMD64
           - os: windows-latest
@@ -75,20 +104,23 @@ jobs:
         with:
           output-dir: wheelhouse
         env:
+          # 🐍 Python版本配置 (使用顶部env中定义的版本)
+          CIBW_BUILD: ${{ env.PYTHON_VERSIONS }}
+          
           # 平台特定的架构配置
           CIBW_ARCHS_LINUX: ${{ matrix.cibw_archs }}
           CIBW_ARCHS_MACOS: ${{ matrix.cibw_archs }}  
           CIBW_ARCHS_WINDOWS: ${{ matrix.cibw_archs }}
           
-          # 增加构建详细度以调试交叉编译
-          CIBW_BUILD_VERBOSITY: 3
+          # 构建详细度配置
+          CIBW_BUILD_VERBOSITY: ${{ env.BUILD_VERBOSITY }}
           
-          # macOS部署目标配置
-          CIBW_ENVIRONMENT_MACOS: ${{ matrix.macos_target && format('MACOSX_DEPLOYMENT_TARGET={0}', matrix.macos_target) || '' }}
+          # macOS部署目标配置 (使用顶部env中定义的版本)
+          CIBW_ENVIRONMENT_MACOS: ${{ matrix.cibw_archs == 'arm64' && format('MACOSX_DEPLOYMENT_TARGET={0}', env.MACOS_DEPLOYMENT_TARGET) || '' }}
           
           CIBW_BEFORE_BUILD_MACOS: |
             brew install gcc openblas arpack
-            echo "🎯 Building for ARM64 with deployment target ${{ matrix.macos_target }}"
+            echo "🎯 Building for ARM64 with deployment target ${{ env.MACOS_DEPLOYMENT_TARGET }}"
             
             # 设置编译器
             export CC=clang
