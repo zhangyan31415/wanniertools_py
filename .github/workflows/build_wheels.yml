@@ -27,11 +27,6 @@ jobs:
             cibw_archs: arm64
             macos_target: "14.0"
             
-          # macOS x86_64 (Intel, cross-compilation)
-          - os: macos-latest
-            cibw_archs: x86_64
-            macos_target: "13.0"
-            
           # Windows AMD64
           - os: windows-latest
             cibw_archs: AMD64
@@ -93,45 +88,21 @@ jobs:
           
           CIBW_BEFORE_BUILD_MACOS: |
             brew install gcc openblas arpack
-            echo "🎯 Building for ${{ matrix.cibw_archs }} with deployment target ${{ matrix.macos_target }}"
+            echo "🎯 Building for ARM64 with deployment target ${{ matrix.macos_target }}"
             
-            # 显示构建环境信息
-            echo "=== Build Environment Debug ==="
-            echo "Host arch: $(uname -m)"
-            echo "Target arch: ${{ matrix.cibw_archs }}"
-            echo "Homebrew prefix: $(brew --prefix)"
-            echo "Available compilers:"
-            which clang && clang --version | head -1
-            which gfortran && gfortran --version | head -1
-            
-            # 设置编译器和标志 - 确保传递给meson
+            # 设置编译器
             export CC=clang
             export CXX=clang++
             export FC=$(brew --prefix)/bin/gfortran
             export FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
             
-            # 关键：设置架构特定的编译标志
-            export CFLAGS="-arch ${{ matrix.cibw_archs }}"
-            export CXXFLAGS="-arch ${{ matrix.cibw_archs }}"
-            export LDFLAGS="-arch ${{ matrix.cibw_archs }} -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
-            export ARCHFLAGS="-arch ${{ matrix.cibw_archs }}"
+            # 设置ARM64编译标志
+            export CFLAGS="-arch arm64"
+            export CXXFLAGS="-arch arm64"
+            export LDFLAGS="-arch arm64 -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
+            export ARCHFLAGS="-arch arm64"
             
-            # 额外的meson特定环境变量
-            export MACOSX_DEPLOYMENT_TARGET=${{ matrix.macos_target }}
-            export _PYTHON_HOST_PLATFORM="macosx-${{ matrix.macos_target }}-${{ matrix.cibw_archs }}"
-            
-            echo "=== Final Environment ==="
-            echo "CC=$CC"
-            echo "CXX=$CXX" 
-            echo "FC=$FC"
-            echo "CFLAGS=$CFLAGS"
-            echo "CXXFLAGS=$CXXFLAGS"
-            echo "LDFLAGS=$LDFLAGS"
-            echo "MACOSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET"
-            echo "ARCHFLAGS=$ARCHFLAGS"
-            echo "_PYTHON_HOST_PLATFORM=$_PYTHON_HOST_PLATFORM"
-            
-            echo "✅ Configured for ${{ matrix.cibw_archs }} target"
+            echo "✅ Configured for ARM64 target"
       
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -253,41 +224,22 @@ jobs:
           fi
 
   test_macos:
-    name: Test macOS wheel (${{ matrix.runner-arch }})
+    name: Test macOS ARM64 wheel
     needs: build_wheels
-    runs-on: ${{ matrix.runner }}
-    if: always()  # Run even if some builds failed
-    
-    strategy:
-      matrix:
-        include:
-          - runner: macos-latest    # ARM64 (Apple Silicon M1/M2)
-            runner-arch: arm64
-            wheel-pattern: "*arm64.whl"
-            artifact-name: wheels-macos-latest-arm64
-          - runner: macos-13        # x86_64 (Intel)
-            runner-arch: x86_64  
-            wheel-pattern: "*x86_64.whl"
-            artifact-name: wheels-macos-latest-x86_64
-    
+    runs-on: macos-latest
+    if: always()
+
     steps:
-      - name: Log macOS version and architecture
+      - name: Log macOS ARM64 test environment
         run: |
-          echo "🔍 Test Environment Information:"
-          echo "macOS Version:"
+          echo "🔍 macOS ARM64 Test Environment:"
           sw_vers
-          echo "Host Architecture:"
           uname -m
-          echo "Homebrew prefix:"
-          echo $(brew --prefix)
-          
-      - name: Checkout code
-        uses: actions/checkout@v4
       
-      - name: Download macOS wheels
+      - name: Download macOS ARM64 wheels
         uses: actions/download-artifact@v4
         with:
-          name: ${{ matrix.artifact-name }}
+          name: wheels-macos-latest-arm64
           path: ./wheels
         continue-on-error: true
       
@@ -306,22 +258,22 @@ jobs:
           echo "MPI installation path:"
           which mpirun
       
-      - name: Install wheel (${{ matrix.runner-arch }})
+      - name: Install wheel (ARM64)
         shell: bash
         run: |
           echo "🔍 Available wheels:"
           ls -la ./wheels/ || echo "No wheels found"
           
-          echo "🎯 Looking for ${{ matrix.runner-arch }} wheel pattern: ${{ matrix.wheel-pattern }}"
-          target_wheel=$(ls ./wheels/${{ matrix.wheel-pattern }} 2>/dev/null | head -1)
+          echo "🎯 Looking for arm64 wheel pattern: *arm64.whl"
+          target_wheel=$(ls ./wheels/*arm64.whl 2>/dev/null | head -1)
           
           if [ -n "$target_wheel" ] && [ -f "$target_wheel" ]; then
-            echo "✅ Found ${{ matrix.runner-arch }} wheel: $target_wheel"
+            echo "✅ Found ARM64 wheel: $target_wheel"
             pip install "$target_wheel"
             echo "📊 Installed wheel info:"
             pip show wannier-tools
           else
-            echo "❌ No ${{ matrix.runner-arch }} wheel found matching ${{ matrix.wheel-pattern }}"
+            echo "❌ No ARM64 wheel found matching *arm64.whl"
             echo "Available wheels:"
             ls -la ./wheels/ || echo "No wheels directory"
             exit 1
@@ -329,7 +281,7 @@ jobs:
       
       - name: Test basic functionality
         run: |
-          echo "🧪 Testing ${{ matrix.runner-arch }} wheel on ${{ matrix.runner }}"
+          echo "🧪 Testing ARM64 wheel on macOS"
           echo "System info:"
           uname -m
           python -c "import platform; print(f'Python platform: {platform.platform()}')"
@@ -339,9 +291,9 @@ jobs:
           python -c "import wannier_tools.check_deps; wannier_tools.check_deps.main()"
           wt-check-deps
       
-      - name: Test MPI functionality (macOS ${{ matrix.runner-arch }})
+      - name: Test MPI functionality (macOS ARM64)
         run: |
-          echo "🚀 Testing MPI functionality on ${{ matrix.runner-arch }} (OpenMPI already installed)"
+          echo "🚀 Testing MPI functionality on ARM64 (OpenMPI already installed)"
           mpirun --version
           
           cd examples/Haldane_model
@@ -356,7 +308,7 @@ jobs:
           echo "$wt_output"
           
           if [ $wt_exit_code -ne 0 ]; then
-            echo "❌ macOS ${{ matrix.runner-arch }} 单核测试失败，退出码: $wt_exit_code"
+            echo "❌ macOS ARM64 单核测试失败，退出码: $wt_exit_code"
             exit 1
           fi
           
@@ -367,7 +319,7 @@ jobs:
           
           if [ -f WT.out ]; then
             cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
-            echo "[${{ matrix.runner-arch }}] 单核结果: $cores"
+            echo "[ARM64] 单核结果: $cores"
           else
             echo "❌ 未生成WT.out文件"
             exit 1
@@ -385,7 +337,7 @@ jobs:
           echo "$mpi_output"
           
           if [ $mpi_exit_code -ne 0 ]; then
-            echo "❌ macOS ${{ matrix.runner-arch }} 双核测试失败，退出码: $mpi_exit_code"
+            echo "❌ macOS ARM64 双核测试失败，退出码: $mpi_exit_code"
             exit 1
           fi
           
@@ -396,7 +348,7 @@ jobs:
           
           if [ -f WT.out ]; then
             cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
-            echo "[${{ matrix.runner-arch }}] 双核结果: $cores"
+            echo "[ARM64] 双核结果: $cores"
           else
             echo "❌ 双核测试未生成WT.out文件"
             exit 1
