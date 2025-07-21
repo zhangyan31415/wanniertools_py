@@ -17,7 +17,24 @@ jobs:
         shell: ${{ matrix.os == 'windows-latest' && 'cmd' || 'bash' }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          # Linux x86_64
+          - os: ubuntu-latest
+            cibw_archs: x86_64
+            
+          # macOS ARM64 (Apple Silicon)
+          - os: macos-latest  
+            cibw_archs: arm64
+            macos_target: "14.0"
+            
+          # macOS x86_64 (Intel, cross-compilation)
+          - os: macos-latest
+            cibw_archs: x86_64
+            macos_target: "13.0"
+            
+          # Windows AMD64
+          - os: windows-latest
+            cibw_archs: AMD64
     
     steps:
       - name: Checkout code
@@ -63,48 +80,36 @@ jobs:
         with:
           output-dir: wheelhouse
         env:
-          # macOS: 让 cibuildwheel 分别构建每个架构，然后自动合并 universal2
-          CIBW_ARCHS_MACOS: "x86_64 arm64"
+          # 平台特定的架构配置
+          CIBW_ARCHS_LINUX: ${{ matrix.cibw_archs }}
+          CIBW_ARCHS_MACOS: ${{ matrix.cibw_archs }}  
+          CIBW_ARCHS_WINDOWS: ${{ matrix.cibw_archs }}
+          
+          # macOS部署目标配置
+          CIBW_ENVIRONMENT_MACOS: ${{ matrix.macos_target && format('MACOSX_DEPLOYMENT_TARGET={0}', matrix.macos_target) || '' }}
+          
           CIBW_BEFORE_BUILD_MACOS: |
             brew install gcc openblas arpack
-            echo "Homebrew prefix: $(brew --prefix)"
-            echo "Host architecture: $(uname -m)"
-            echo "Target architecture: $CIBW_ARCHS"
+            echo "🎯 Building for ${{ matrix.cibw_archs }} with deployment target ${{ matrix.macos_target }}"
             
-            # 根据架构动态设置 MACOSX_DEPLOYMENT_TARGET
-            if [[ "$CIBW_ARCHS" == "arm64" ]]; then
-              export MACOSX_DEPLOYMENT_TARGET=14.0  # ARM64: 支持 Sonoma+
-              export CFLAGS="-arch arm64"
-              export CXXFLAGS="-arch arm64"
-              export LDFLAGS="-arch arm64 -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
-              echo "✅ Configured for ARM64 target (macOS 14.0+)"
-            elif [[ "$CIBW_ARCHS" == "x86_64" ]]; then
-              export MACOSX_DEPLOYMENT_TARGET=13.0  # Intel: 兼容 Ventura
-              export CFLAGS="-arch x86_64"
-              export CXXFLAGS="-arch x86_64"
-              export LDFLAGS="-arch x86_64 -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
-              echo "✅ Configured for x86_64 target (macOS 13.0+)"
-            else
-              echo "❌ Unknown architecture: $CIBW_ARCHS"
-              exit 1
-            fi
-            
-            # 设置基础编译器
+            # 设置编译器
             export CC=clang
             export CXX=clang++
             export FC=$(brew --prefix)/bin/gfortran
             export FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
-            export ARCHFLAGS="$CFLAGS"
             
-            echo "Final configuration:"
-            echo "MACOSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET"
-            echo "CFLAGS=$CFLAGS"
-            echo "LDFLAGS=$LDFLAGS"
+            # 设置架构特定的编译标志
+            export CFLAGS="-arch ${{ matrix.cibw_archs }}"
+            export CXXFLAGS="-arch ${{ matrix.cibw_archs }}"
+            export LDFLAGS="-arch ${{ matrix.cibw_archs }} -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
+            export ARCHFLAGS="-arch ${{ matrix.cibw_archs }}"
+            
+            echo "✅ Configured for ${{ matrix.cibw_archs }} target"
       
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.os }}
+          name: wheels-${{ matrix.os }}-${{ matrix.cibw_archs }}
           path: ./wheelhouse/*.whl
   
   test_linux:
@@ -120,7 +125,7 @@ jobs:
       - name: Download Linux wheels
         uses: actions/download-artifact@v4
         with:
-          name: wheels-ubuntu-latest
+          name: wheels-ubuntu-latest-x86_64
           path: ./wheels
         continue-on-error: true
       
@@ -232,9 +237,11 @@ jobs:
           - runner: macos-latest    # ARM64 (Apple Silicon M1/M2)
             runner-arch: arm64
             wheel-pattern: "*arm64.whl"
+            artifact-name: wheels-macos-latest-arm64
           - runner: macos-13        # x86_64 (Intel)
             runner-arch: x86_64  
             wheel-pattern: "*x86_64.whl"
+            artifact-name: wheels-macos-latest-x86_64
     
     steps:
       - name: Log macOS version and architecture
@@ -253,7 +260,7 @@ jobs:
       - name: Download macOS wheels
         uses: actions/download-artifact@v4
         with:
-          name: wheels-macos-latest
+          name: ${{ matrix.artifact-name }}
           path: ./wheels
         continue-on-error: true
       
@@ -384,7 +391,7 @@ jobs:
       - name: Download Windows wheels
         uses: actions/download-artifact@v4
         with:
-          name: wheels-windows-latest
+          name: wheels-windows-latest-AMD64
           path: ./wheels
         continue-on-error: true
       
