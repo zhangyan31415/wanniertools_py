@@ -236,6 +236,9 @@ jobs:
           sw_vers
           uname -m
       
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
       - name: Download macOS ARM64 wheels
         uses: actions/download-artifact@v4
         with:
