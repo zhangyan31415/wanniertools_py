@@ -16,7 +16,7 @@ unset ztics
 unset key
 set pm3d
 #set zbrange [ -10: 10] 
-set cbrange [ -0.324E+01: 0.244E+01 ] 
+set cbrange [ -0.161E+03: 0.197E+03 ] 
 set view map
 set size ratio -1
 set border lw 3
@@ -40,11 +40,11 @@ set colorbox
 splot 'Berrycurvature.dat' u 4:5:9 w pm3d
 unset multiplot
 unset label 1
-set label 2 "Sum over all bands below Fermi level E\\_arc" at screen 0.5 ,0.98 center
+set label 2 "Sum over all bands below Fermi level E\\\_arc" at screen 0.5 ,0.98 center
 set output 'Berrycurvature_EF.png'
 set multiplot layout 1,3 rowsfirst \
               margins screen MP_LEFT, MP_RIGHT, MP_BOTTOM, MP_TOP spacing screen MP_GAP
-set cbrange [ -0.324E+01: 0.244E+01 ] 
+set cbrange [ -0.161E+03: 0.197E+03 ] 
 set title 'Berry Curvature {/Symbol W}_x ({\305}^2)'
 splot 'Berrycurvature.dat' u 4:5:10 w pm3d
 unset ylabel

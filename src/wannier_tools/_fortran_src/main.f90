@@ -60,7 +60,7 @@
      ierr = 0
      cpuid= 0
      num_cpu= 1
-
+     
 #if defined (MPI)
      call mpi_init(ierr)
      call mpi_comm_rank(mpi_comm_world, cpuid, ierr)

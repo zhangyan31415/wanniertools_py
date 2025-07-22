@@ -111,7 +111,25 @@ Note: For parallel computation, make sure MPI is installed:
             if args.sample:
                 new_cmd.append('--sample')
 
-            os.execvpe(new_cmd[0], new_cmd, os.environ)
+            # Set up environment for bundled OpenMPI
+            env = os.environ.copy()
+            if plat_dir and mpirun_exe.endswith(f'internal_mpi/{plat_dir}/bin/mpirun'):
+                pkg_root = Path(__file__).resolve().parent
+                mpi_root = pkg_root / 'internal_mpi' / plat_dir
+                
+                # Set OpenMPI prefix and data directory
+                env['OPAL_PREFIX'] = str(mpi_root)
+                env['OPAL_PKGDATADIR'] = str(mpi_root / 'share' / 'openmpi')
+                env['OPAL_DATADIR'] = str(mpi_root / 'share')
+                
+                # Update library path
+                lib_path = str(mpi_root / 'lib')
+                if sysname.startswith('linux'):
+                    env['LD_LIBRARY_PATH'] = f"{lib_path}:{env.get('LD_LIBRARY_PATH', '')}"
+                elif sysname == 'darwin':
+                    env['DYLD_LIBRARY_PATH'] = f"{lib_path}:{env.get('DYLD_LIBRARY_PATH', '')}"
+
+            os.execvpe(new_cmd[0], new_cmd, env)
             # exec replaces current process; no return
         
         # Windows fallback: use multiprocessing
