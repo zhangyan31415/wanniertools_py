@@ -13,7 +13,7 @@
      use prec
 
 #if defined (MPI)
-     include 'mpif.h'
+     use mpi
 #endif
 
      integer :: cpuid  ! CPU id for mpi

@@ -38,7 +38,7 @@
      use wmpi
      use para
 #if defined (MPI)
-     include 'mpif.h'
+     use mpi
 #else
      use runtime_mpi, only: try_init_mpi, mpi_initialized, try_finalize_mpi
      use runtime_mpi, only: runtime_cpuid => cpuid, runtime_num_cpu => num_cpu, runtime_ierr => ierr
