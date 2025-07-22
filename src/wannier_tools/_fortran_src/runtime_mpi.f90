@@ -3,6 +3,7 @@
 !> without requiring compile-time MPI dependencies
 
 module runtime_mpi
+    use para, only: dp
     implicit none
     
     ! MPI status variables
@@ -252,4 +253,81 @@ contains
         
     end subroutine try_finalize_mpi
     
+    subroutine runtime_allreduce_real(local_array, global_array, dims)
+        implicit none
+        integer, intent(in) :: dims(2)
+        real(dp), intent(in) :: local_array(dims(1), dims(2))
+        real(dp), intent(out) :: global_array(dims(1), dims(2))
+        
+        ! Local variables
+        real(dp), allocatable :: temp_array(:,:)
+        character(len=20) :: rank_file
+        integer :: other_rank, ios
+        logical :: file_exists
+        
+        if (num_cpu <= 1) then
+            global_array = local_array
+            return
+        endif
+        
+        ! Each process writes its results
+        write(rank_file, '(a,i0,a)') 'rank_', cpuid, '.dat'
+        open(unit=500+cpuid, file=rank_file, form='unformatted')
+        write(500+cpuid) local_array
+        close(500+cpuid)
+        
+        call sleep(1) ! Simple barrier
+        
+        if (cpuid == 0) then
+            global_array = local_array
+            allocate(temp_array(dims(1), dims(2)))
+            
+            do other_rank = 1, num_cpu - 1
+                write(rank_file, '(a,i0,a)') 'rank_', other_rank, '.dat'
+                inquire(file=rank_file, exist=file_exists)
+                if (file_exists) then
+                    open(unit=600, file=rank_file, form='unformatted', iostat=ios)
+                    if (ios == 0) then
+                        read(600) temp_array
+                        close(600)
+                        global_array = global_array + temp_array
+                    endif
+                endif
+            enddo
+            
+            deallocate(temp_array)
+            
+            open(unit=700, file='final_result.dat', form='unformatted')
+            write(700) global_array
+            close(700)
+            
+            do other_rank = 0, num_cpu - 1
+                write(rank_file, '(a,i0,a)') 'rank_', other_rank, '.dat'
+                open(unit=800, file=rank_file, iostat=ios)
+                if (ios == 0) close(unit=800, status='delete')
+            enddo
+        else
+            do while (.true.)
+                inquire(file='final_result.dat', exist=file_exists)
+                if (file_exists) exit
+                call sleep(1)
+            enddo
+            
+            open(unit=700, file='final_result.dat', form='unformatted', iostat=ios)
+            if (ios == 0) then
+                read(700) global_array
+                close(700)
+            else
+                global_array = local_array
+            endif
+        endif
+        
+        if (cpuid == 0) then
+            call sleep(1)
+            open(unit=700, file='final_result.dat', iostat=ios)
+            if (ios == 0) close(unit=700, status='delete')
+        endif
+        
+    end subroutine runtime_allreduce_real
+
 end module runtime_mpi 
