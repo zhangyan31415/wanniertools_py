@@ -266,6 +266,7 @@ if fortran_compiler.get_id().startswith('intel')
     fortran_args += ['-fpp']
   endif
 else
+
   fortran_args += ['-cpp', '-fallow-argument-mismatch']
 endif
 
