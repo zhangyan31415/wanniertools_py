@@ -91,8 +91,16 @@ jobs:
           echo "CXX=clang++" >> $GITHUB_ENV
           # 验证编译器安装
           which gfortran
+          echo "gfortran --version"
           gfortran --version
+          which mpif90
+          echo "mpif90 --version"
+          mpif90 --version
+          which mpirun
+          echo "mpirun --version"
+          mpirun --version
           echo "✅ Using clang/clang++ with gfortran for macOS builds"
+          sleep 100
       
       # Windows: 设置 Visual Studio
       - name: Set up MSVC (Windows)
@@ -119,7 +127,7 @@ jobs:
           CIBW_ENVIRONMENT_MACOS: ${{ matrix.cibw_archs == 'arm64' && format('MACOSX_DEPLOYMENT_TARGET={0}', env.MACOS_DEPLOYMENT_TARGET) || '' }}
           
           # Linux 编译环境设置
-          CIBW_ENVIRONMENT_LINUX: 'PATH="/usr/lib64/openmpi3/bin:/usr/local/bin:$PATH" FC=gfortran FFLAGS="-fallow-argument-mismatch -ffree-line-length-none"'
+          CIBW_ENVIRONMENT_LINUX: 'PATH="/usr/lib64/openmpi3/bin:/usr/local/bin:$PATH" FC=mpif90 FFLAGS="-fallow-argument-mismatch -ffree-line-length-none"'
           
           # Linux: 安装Open MPI并复制到internal_mpi目录
           CIBW_BEFORE_BUILD_LINUX: |
