@@ -183,15 +183,61 @@ jobs:
           
           # Linux: 使用auditwheel修复并打包Open MPI
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: |
-            auditwheel repair --add-binary "src/wannier_tools/internal_mpi/linux_x86_64/bin/mpirun:internal_mpi/linux_x86_64/bin/" \
-                              --add-binary "src/wannier_tools/internal_mpi/linux_x86_64/lib/*:internal_mpi/linux_x86_64/lib/" \
-                              {wheel} {dest_dir}
+            # First repair the wheel with auditwheel
+            auditwheel repair {wheel} {dest_dir}
+            
+            # Then manually add Open MPI files to the repaired wheel
+            cd {dest_dir}
+            for wheel_file in *.whl; do
+              echo "Adding Open MPI files to $wheel_file"
+              # Create a temporary directory to extract and modify the wheel
+              temp_dir=$(mktemp -d)
+              cd "$temp_dir"
+              
+              # Extract the wheel
+              unzip "../$wheel_file"
+              
+              # Create internal_mpi directory structure
+              mkdir -p wannier_tools/internal_mpi/linux_x86_64/{bin,lib}
+              
+              # Copy Open MPI files from source
+              cp ../../../src/wannier_tools/internal_mpi/linux_x86_64/bin/* wannier_tools/internal_mpi/linux_x86_64/bin/ 2>/dev/null || true
+              cp ../../../src/wannier_tools/internal_mpi/linux_x86_64/lib/* wannier_tools/internal_mpi/linux_x86_64/lib/ 2>/dev/null || true
+              
+              # Recreate the wheel
+              zip -r "../$wheel_file" .
+              cd ..
+              rm -rf "$temp_dir"
+            done
           
           # macOS: 使用delocate修复并打包Open MPI
           CIBW_REPAIR_WHEEL_COMMAND_MACOS: |
-            delocate-wheel --add-binary "src/wannier_tools/internal_mpi/macos_arm64/bin/mpirun:internal_mpi/macos_arm64/bin/" \
-                           --add-binary "src/wannier_tools/internal_mpi/macos_arm64/lib/*:internal_mpi/macos_arm64/lib/" \
-                           {wheel}
+            # First repair the wheel with delocate
+            delocate-wheel {wheel}
+            
+            # Then manually add Open MPI files to the repaired wheel
+            cd $(dirname {wheel})
+            wheel_file=$(basename {wheel})
+            echo "Adding Open MPI files to $wheel_file"
+            
+            # Create a temporary directory to extract and modify the wheel
+            temp_dir=$(mktemp -d)
+            cd "$temp_dir"
+            
+            # Extract the wheel
+            unzip "../$wheel_file"
+            
+            # Create internal_mpi directory structure
+            mkdir -p wannier_tools/internal_mpi/macos_arm64/{bin,lib}
+            
+            # Copy Open MPI files from source
+            cp ../../../src/wannier_tools/internal_mpi/macos_arm64/bin/* wannier_tools/internal_mpi/macos_arm64/bin/ 2>/dev/null || true
+            cp ../../../src/wannier_tools/internal_mpi/macos_arm64/lib/* wannier_tools/internal_mpi/macos_arm64/lib/ 2>/dev/null || true
+            
+            # Recreate the wheel
+            zip -r "../$wheel_file" .
+            cd ..
+            rm -rf "$temp_dir"
       
       - name: Upload wheels
         uses: actions/upload-artifact@v4
