@@ -348,5 +348,13 @@ py.install_sources([
   subdir: 'wannier_tools'
 )
 
+# Install internal_mpi files using py.install_sources
+internal_mpi_files = files(
+  'src/wannier_tools/internal_mpi/__init__.py',
+  'src/wannier_tools/internal_mpi/linux_x86_64/bin/mpirun',
+  'src/wannier_tools/internal_mpi/linux_x86_64/lib/libmpi.so',
+)
+py.install_sources(internal_mpi_files, subdir: 'wannier_tools', preserve_path: true)
+
 # Install examples and other data
 install_subdir('examples', install_dir: py.get_install_dir() / 'wannier_tools', strip_directory: false) 

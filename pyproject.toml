@@ -55,6 +55,13 @@ Homepage = "https://www.wanniertools.com/"
 [tool.meson-python.args]
 install = ["--tags=python-runtime,extension,devel"] 
 
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+
+[tool.setuptools.package-data]
+"wannier_tools.internal_mpi" = ["**/*"]
+
 # cibuildwheel配置
 [tool.cibuildwheel]
 # 构建哪些版本
