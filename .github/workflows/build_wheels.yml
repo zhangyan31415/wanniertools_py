@@ -125,6 +125,12 @@ jobs:
             yum install -y openmpi openmpi-devel hwloc-devel libevent-devel
             echo "✅ OpenMPI installed"
             
+            # 设置 Fortran 编译器使用 mpifort，启用 MPI 模块
+            export FC=mpifort
+            export FFLAGS="-fallow-argument-mismatch -ffree-line-length-none"
+            echo "✅ Using mpifort: $(which mpifort)"
+            mpifort --version || true
+            
             # 创建internal_mpi目录结构
             mkdir -p src/wannier_tools/internal_mpi/linux_x86_64/{bin,lib,share}
             
