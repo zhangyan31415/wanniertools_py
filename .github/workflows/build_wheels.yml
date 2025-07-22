@@ -183,11 +183,11 @@ jobs:
           
           # Linux: 使用auditwheel修复并打包Open MPI
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: |
-            # Install zip for wheel manipulation
-            yum install -y zip unzip || apt-get update && apt-get install -y zip unzip
+            # Install zip for wheel manipulation (use yum for manylinux containers)
+            yum install -y zip unzip
             
-            # First repair the wheel with auditwheel
-            auditwheel repair {wheel} {dest_dir}
+            # First repair the wheel with auditwheel to the destination directory
+            auditwheel repair {wheel} -w {dest_dir}
             
             # Find the repaired wheel and add Open MPI files
             cd {dest_dir}
@@ -205,13 +205,18 @@ jobs:
               # Create internal_mpi directory structure
               mkdir -p wannier_tools/internal_mpi/linux_x86_64/{bin,lib}
               
-              # Copy Open MPI files from source (if they exist)
-              if [ -d "../../../src/wannier_tools/internal_mpi/linux_x86_64/bin" ]; then
-                cp ../../../src/wannier_tools/internal_mpi/linux_x86_64/bin/* wannier_tools/internal_mpi/linux_x86_64/bin/ 2>/dev/null || true
+              # Copy Open MPI files from the build context (they should be in the container)
+              # The files were copied during CIBW_BEFORE_BUILD_LINUX
+              if [ -d "/project/src/wannier_tools/internal_mpi/linux_x86_64/bin" ]; then
+                cp /project/src/wannier_tools/internal_mpi/linux_x86_64/bin/* wannier_tools/internal_mpi/linux_x86_64/bin/ 2>/dev/null || echo "No bin files to copy"
               fi
-              if [ -d "../../../src/wannier_tools/internal_mpi/linux_x86_64/lib" ]; then
-                cp ../../../src/wannier_tools/internal_mpi/linux_x86_64/lib/* wannier_tools/internal_mpi/linux_x86_64/lib/ 2>/dev/null || true
+              if [ -d "/project/src/wannier_tools/internal_mpi/linux_x86_64/lib" ]; then
+                cp /project/src/wannier_tools/internal_mpi/linux_x86_64/lib/* wannier_tools/internal_mpi/linux_x86_64/lib/ 2>/dev/null || echo "No lib files to copy"
               fi
+              
+              # Show what we copied
+              echo "Contents of internal_mpi:"
+              find wannier_tools/internal_mpi/ -type f 2>/dev/null || echo "No files in internal_mpi"
               
               # Recreate the wheel
               zip -r "../$repaired_wheel" .
@@ -219,7 +224,9 @@ jobs:
               rm -rf "$temp_dir"
               echo "✅ Open MPI files added to $repaired_wheel"
             else
-              echo "❌ No repaired wheel found"
+              echo "❌ No repaired wheel found in {dest_dir}"
+              echo "Available files:"
+              ls -la
             fi
           
           # macOS: 使用delocate修复并打包Open MPI
