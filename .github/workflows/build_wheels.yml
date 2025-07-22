@@ -340,8 +340,7 @@ jobs:
       
       - name: Test MPI functionality (Linux)
         run: |
-          echo "🚀 Testing MPI functionality (OpenMPI already installed)"
-          mpirun --version
+          echo "🚀 Testing MPI functionality with bundled OpenMPI"
           
           cd examples/Haldane_model
           echo "=== 测试单核运行 ==="
@@ -476,8 +475,7 @@ jobs:
       
       - name: Test MPI functionality (macOS ARM64)
         run: |
-          echo "🚀 Testing MPI functionality on ARM64 (OpenMPI already installed)"
-          mpirun --version
+          echo "🚀 Testing MPI functionality with bundled OpenMPI on ARM64"
           
           cd examples/Haldane_model
           echo "=== 测试单核运行 ==="

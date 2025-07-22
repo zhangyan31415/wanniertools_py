@@ -56,7 +56,7 @@ Note: For parallel computation, make sure MPI is installed:
 
     # internal flag used to stop recursive spawning
     parser.add_argument('--no-spawn', action='store_true', help=argparse.SUPPRESS)
-
+    
     parser.add_argument(
         '--sample',
         action='store_true',
@@ -75,7 +75,7 @@ Note: For parallel computation, make sure MPI is installed:
         create_sample_input()
         print("Sample input file created. You can now edit wt.in and run the calculation.")
         return 0
-
+    
     # Parallel execution wrapper -------------------------------------------------
     if not args.no_spawn and args.np > 1:
         # Try to locate bundled mpirun first
@@ -96,14 +96,12 @@ Note: For parallel computation, make sure MPI is installed:
             if candidate.is_file():
                 mpirun_exe = str(candidate)
 
-        # Fallback to system mpirun if bundled不存在
-        if mpirun_exe is None:
+        # Fallback to system mpirun if bundled is not found (Linux/macOS only)
+        if mpirun_exe is None and sysname != 'windows':
             mpirun_exe = shutil.which('mpirun') or shutil.which('mpiexec')
 
-        if mpirun_exe is None:
-            print("[ERROR] Requested np > 1 but no mpirun/mpiexec found (bundled or system).\n"
-                  "Falling back to serial execution.")
-        else:
+        # On Linux/macOS, if an mpirun is found, use it
+        if mpirun_exe is not None and sysname != 'windows':
             new_cmd = [mpirun_exe, '-np', str(args.np), sys.executable, '-m', 'wannier_tools.cli', '--no-spawn']
 
             # propagate user-visible CLI args (except -n/--np)
@@ -115,9 +113,9 @@ Note: For parallel computation, make sure MPI is installed:
 
             os.execvpe(new_cmd[0], new_cmd, os.environ)
             # exec replaces current process; no return
-
-        # Windows fallback: use multiprocessing if no mpirun found
-        if mpirun_exe is None and sysname == 'windows':
+        
+        # Windows fallback: use multiprocessing
+        elif sysname == 'windows':
             print("[INFO] No mpirun found on Windows, using multiprocessing fallback")
             import multiprocessing as mp
             
@@ -141,6 +139,11 @@ Note: For parallel computation, make sure MPI is installed:
                 p.join()
             
             return 0
+        
+        # Fallback for Linux/macOS if no mpirun was found
+        else:
+            print(f"[ERROR] Requested np > 1 on {sysname} but no mpirun/mpiexec found (bundled or system).\n"
+                  "Falling back to serial execution.")
 
 
     # Run WannierTools (serial or already-spawned)
