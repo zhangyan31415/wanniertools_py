@@ -249,7 +249,7 @@ jobs:
 
               # 解压
               temp_dir=$(mktemp -d)
-              ( cd "$temp_dir" && unzip "../$wheel_file" )
+              ( cd "$temp_dir" && unzip "$OLDPWD/$wheel_file" )
 
               # 创建目录并复制文件
               mkdir -p "$temp_dir/wannier_tools/internal_mpi/macos_arm64/bin" \
@@ -267,7 +267,7 @@ jobs:
               fi
 
               # 重新打包
-              ( cd "$temp_dir" && zip -qr "../$wheel_file" . )
+              ( cd "$temp_dir" && zip -qr "$OLDPWD/$wheel_file" . )
               rm -rf "$temp_dir"
               echo "✅ Open MPI injected into $wheel_file"
             done
