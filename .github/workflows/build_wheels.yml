@@ -146,6 +146,15 @@ jobs:
                 break
               fi
             done
+
+            # prterun 是 OpenMPI ≥5 的实际启动器，也一并复制
+            for bindir in /usr/lib64/openmpi/bin /usr/bin /usr/local/bin; do
+              if [ -f "$bindir/prterun" ]; then
+                cp "$bindir/prterun" src/wannier_tools/internal_mpi/linux_x86_64/bin/
+                echo "✅ Found prterun in $bindir"
+                break
+              fi
+            done
             
             # 复制共享库
             for libdir in /usr/lib64/openmpi/lib /usr/lib64 /usr/lib /usr/local/lib; do
@@ -153,6 +162,11 @@ jobs:
                 find "$libdir" -name "libmpi.so*" -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || true
                 find "$libdir" -name "libopen-rte.so*" -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || true
                 find "$libdir" -name "libopen-pal.so*" -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || true
+                # 额外依赖
+                find "$libdir" -name "libhwloc.so*"   -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || true
+                find "$libdir" -name "libevent*.so*"   -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || true
+                find "$libdir" -name "libpmix.so*"     -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || true
+                find "$libdir" -name "libprte.so*"     -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || true
               fi
             done
             
@@ -186,6 +200,8 @@ jobs:
             echo "📋 Copying Open MPI runtime files..."
             cp $(brew --prefix)/bin/mpirun src/wannier_tools/internal_mpi/macos_arm64/bin/
             cp $(brew --prefix)/bin/orterun src/wannier_tools/internal_mpi/macos_arm64/bin/ 2>/dev/null || true
+            # prterun (OpenMPI ≥5) 同样复制
+            cp $(brew --prefix)/bin/prterun src/wannier_tools/internal_mpi/macos_arm64/bin/ 2>/dev/null || true
             
             # 复制共享库 (包括所有 MPI 和依赖库)
             echo "📦 Copying MPI libraries..."
@@ -200,13 +216,14 @@ jobs:
             # 复制其他可能的依赖
             cp $(brew --prefix)/lib/libevent*.dylib src/wannier_tools/internal_mpi/macos_arm64/lib/ 2>/dev/null || true
             cp $(brew --prefix)/lib/libpmix*.dylib src/wannier_tools/internal_mpi/macos_arm64/lib/ 2>/dev/null || true
+            cp $(brew --prefix)/lib/libprte*.dylib src/wannier_tools/internal_mpi/macos_arm64/lib/ 2>/dev/null || true
             
             # 修复 mpirun 和 orterun 的动态库路径，使其使用相对路径查找依赖库
             echo "🔧 Fixing dynamic library paths for MPI executables..."
             brew_prefix=$(brew --prefix)
             
             # 定义需要修复的库列表
-            libs_to_fix="libhwloc.15.dylib libhwloc.dylib libevent-2.1.dylib libevent.dylib libpmix.dylib libpmix.2.dylib"
+            libs_to_fix="libhwloc.15.dylib libhwloc.dylib libevent-2.1.dylib libevent.dylib libpmix.dylib libpmix.2.dylib libprte.dylib libprte.2.dylib"
             
             # 修复 mpirun 的路径
             if [ -f "src/wannier_tools/internal_mpi/macos_arm64/bin/mpirun" ]; then
@@ -226,6 +243,17 @@ jobs:
                 if [ -f "$brew_prefix/lib/$lib" ]; then
                   install_name_tool -change "$brew_prefix/lib/$lib" "@executable_path/../lib/$lib" src/wannier_tools/internal_mpi/macos_arm64/bin/orterun 2>/dev/null || true
                   echo "  ✅ Fixed path for $lib in orterun"
+                fi
+              done
+            fi
+            
+            # 修复 prterun 的路径
+            if [ -f "src/wannier_tools/internal_mpi/macos_arm64/bin/prterun" ]; then
+              echo "🔧 Fixing prterun paths..."
+              for lib in $libs_to_fix; do
+                if [ -f "$brew_prefix/lib/$lib" ]; then
+                  install_name_tool -change "$brew_prefix/lib/$lib" "@executable_path/../lib/$lib" src/wannier_tools/internal_mpi/macos_arm64/bin/prterun 2>/dev/null || true
+                  echo "  ✅ Fixed path for $lib in prterun"
                 fi
               done
             fi
@@ -392,6 +420,19 @@ jobs:
             ls -la ./wheels/ || echo "No wheels directory"
             exit 1
           fi
+
+      - name: Debug prterun dependencies (Linux)
+        shell: bash
+        run: |
+          set -e
+          PRT=$(python -c "import importlib.resources as ir, sys; plat='linux_x86_64'; print(ir.files('wannier_tools')/'internal_mpi'/plat/'bin'/'prterun'))")
+          if [ -f "$PRT" ]; then
+            echo "✅ prterun located at $PRT"
+            echo "🔗 ldd output:"
+            ldd "$PRT" | cat || true
+          else
+            echo "⚠️ prterun not found!"
+          fi
       
       - name: Test basic functionality
         run: |
@@ -520,6 +561,19 @@ jobs:
             echo "Available wheels:"
             ls -la ./wheels/ || echo "No wheels directory"
             exit 1
+          fi
+
+      - name: Debug prterun dependencies (macOS ARM64)
+        shell: bash
+        run: |
+          set -e
+          PRT=$(python -c "import importlib.resources as ir; print(ir.files('wannier_tools')/'internal_mpi'/'macos_arm64'/'bin'/'prterun'))")
+          if [ -f "$PRT" ]; then
+            echo "✅ prterun located at $PRT"
+            echo "🔗 otool -L output:"
+            otool -L "$PRT" | cat
+          else
+            echo "⚠️ prterun not found!"
           fi
       
       - name: Test basic functionality
