@@ -53,7 +53,7 @@ Homepage = "https://www.wanniertools.com/"
 "Bug Tracker" = "https://github.com/quanshengwu/wannier_tools/issues"
 
 [tool.meson-python.args]
-install = ["--tags=python-runtime,extension,devel"]
+install = ["--tags=python-runtime,extension,devel"] 
 
 # cibuildwheel配置
 [tool.cibuildwheel]
@@ -75,7 +75,7 @@ test-requires = ["pytest"]
 [tool.cibuildwheel.linux]
 archs = ["x86_64"]
 manylinux-x86_64-image = "wanniertools-builder-nompi"
-environment = { FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", WANNIERTOOLS_RUNTIME_MPI_ONLY = "true" }
+environment = { FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch" }
 before-build = [
     "echo 'Building Linux wheels with runtime MPI detection'",
     "echo 'Available Python versions:'",
@@ -84,9 +84,9 @@ before-build = [
 
 # macOS特定配置 - 支持三种架构
 [tool.cibuildwheel.macos] 
-archs = ["x86_64", "arm64"]
 # macOS build environment is configured in CI workflow for better control
-environment = { WANNIERTOOLS_RUNTIME_MPI_ONLY = "true" }
+archs = ["x86_64", "arm64"]
+environment = {}
 
 # Windows特定配置
 [tool.cibuildwheel.windows]

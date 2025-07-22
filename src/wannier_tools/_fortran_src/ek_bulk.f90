@@ -10,7 +10,7 @@ subroutine ek_bulk_line
 
    use wmpi
    use para
-   use runtime_mpi, only: runtime_allreduce_real
+   ! use runtime_mpi, only: runtime_allreduce_real
 
    implicit none
 
@@ -99,10 +99,8 @@ subroutine ek_bulk_line
    call mpi_allreduce(weight, weight_mpi,size(weight),&
       mpi_dp,mpi_sum,mpi_cmw,ierr)
 #else
-   call runtime_allreduce_real(eigv, eigv_mpi, shape(eigv))
-   call runtime_allreduce_real(weight, weight_mpi, shape(weight))
-   ! eigv_mpi= eigv
-   ! weight_mpi= weight
+   eigv_mpi= eigv
+   weight_mpi= weight
 #endif
 
    if (index(Particle,'phonon')/=0) then

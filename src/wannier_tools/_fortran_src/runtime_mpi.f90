@@ -65,6 +65,12 @@ contains
             mpi_available = .true.
             return
         endif
+        ! Custom launcher support (Windows fallback)
+        call get_environment_variable('WT_RANK', env_var, status)
+        if (len_trim(env_var) > 0) then
+            mpi_available = .true.
+            return
+        endif
         
         ! If no MPI environment variables found, assume serial
         mpi_available = .false.
@@ -152,6 +158,12 @@ contains
             read(rank_str, *, iostat=status) cpuid
             if (status == 0) return
         endif
+
+        call get_environment_variable('WT_RANK', rank_str, status)
+        if (len_trim(rank_str) > 0) then
+            read(rank_str, *, iostat=status) cpuid
+            if (status == 0) return
+        endif
         
         ! Default to 0 if can't determine
         cpuid = 0
@@ -178,6 +190,12 @@ contains
         endif
         
         call get_environment_variable('MV2_COMM_WORLD_SIZE', size_str, status)
+        if (len_trim(size_str) > 0) then
+            read(size_str, *, iostat=status) num_cpu
+            if (status == 0) return
+        endif
+
+        call get_environment_variable('WT_SIZE', size_str, status)
         if (len_trim(size_str) > 0) then
             read(size_str, *, iostat=status) num_cpu
             if (status == 0) return

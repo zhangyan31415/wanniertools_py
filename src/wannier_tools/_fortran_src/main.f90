@@ -37,8 +37,12 @@
 
      use wmpi
      use para
+#if defined (MPI)
+     include 'mpif.h'
+#else
      use runtime_mpi, only: try_init_mpi, mpi_initialized, try_finalize_mpi
      use runtime_mpi, only: runtime_cpuid => cpuid, runtime_num_cpu => num_cpu, runtime_ierr => ierr
+#endif
      implicit none
 
      !> file existence
@@ -56,14 +60,19 @@
      ierr = 0
      cpuid= 0
      num_cpu= 1
-     
+
+#if defined (MPI)
+     call mpi_init(ierr)
+     call mpi_comm_rank(mpi_comm_world, cpuid, ierr)
+     call mpi_comm_size(mpi_comm_world, num_cpu, ierr)
+#else
      !> Try to initialize MPI at runtime (works with or without MPI environment)
      call try_init_mpi()
-     
      ! Get MPI status from runtime_mpi module
      cpuid = runtime_cpuid
      num_cpu = runtime_num_cpu
      ierr = runtime_ierr
+#endif
 
      if (cpuid==0) open(unit=stdout, file='WT.out')
 
@@ -790,8 +799,12 @@
      call footer
 
 
+#if defined (MPI)
+     call mpi_finalize(ierr)
+#else
      ! Finalize MPI if it was initialized
      call try_finalize_mpi()
+#endif
      deallocate(HmnR, stat=ierr)
      deallocate(SmnR, stat=ierr)
 

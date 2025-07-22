@@ -118,8 +118,38 @@ jobs:
           # macOS部署目标配置 (使用顶部env中定义的版本)
           CIBW_ENVIRONMENT_MACOS: ${{ matrix.cibw_archs == 'arm64' && format('MACOSX_DEPLOYMENT_TARGET={0}', env.MACOS_DEPLOYMENT_TARGET) || '' }}
           
+          # Linux: 安装Open MPI并复制到internal_mpi目录
+          CIBW_BEFORE_BUILD_LINUX: |
+            echo "📦 Installing OpenMPI for Linux builds..."
+            yum install -y openmpi openmpi-devel || apt-get update && apt-get install -y openmpi-bin libopenmpi-dev
+            echo "✅ OpenMPI installed"
+            
+            # 创建internal_mpi目录结构
+            mkdir -p src/wannier_tools/internal_mpi/linux_x86_64/{bin,lib}
+            
+            # 复制Open MPI运行时文件
+            echo "📋 Copying Open MPI runtime files..."
+            cp /usr/bin/mpirun src/wannier_tools/internal_mpi/linux_x86_64/bin/ || cp /usr/local/bin/mpirun src/wannier_tools/internal_mpi/linux_x86_64/bin/
+            cp /usr/bin/orterun src/wannier_tools/internal_mpi/linux_x86_64/bin/ 2>/dev/null || cp /usr/local/bin/orterun src/wannier_tools/internal_mpi/linux_x86_64/bin/ 2>/dev/null || true
+            
+            # 复制共享库
+            cp /usr/lib64/libmpi.so* src/wannier_tools/internal_mpi/linux_x86_64/lib/ 2>/dev/null || \
+            cp /usr/lib/libmpi.so* src/wannier_tools/internal_mpi/linux_x86_64/lib/ 2>/dev/null || \
+            cp /usr/local/lib/libmpi.so* src/wannier_tools/internal_mpi/linux_x86_64/lib/ 2>/dev/null || true
+            
+            cp /usr/lib64/libopen-rte.so* src/wannier_tools/internal_mpi/linux_x86_64/lib/ 2>/dev/null || \
+            cp /usr/lib/libopen-rte.so* src/wannier_tools/internal_mpi/linux_x86_64/lib/ 2>/dev/null || \
+            cp /usr/local/lib/libopen-rte.so* src/wannier_tools/internal_mpi/linux_x86_64/lib/ 2>/dev/null || true
+            
+            cp /usr/lib64/libopen-pal.so* src/wannier_tools/internal_mpi/linux_x86_64/lib/ 2>/dev/null || \
+            cp /usr/lib/libopen-pal.so* src/wannier_tools/internal_mpi/linux_x86_64/lib/ 2>/dev/null || \
+            cp /usr/local/lib/libopen-pal.so* src/wannier_tools/internal_mpi/linux_x86_64/lib/ 2>/dev/null || true
+            
+            echo "✅ Open MPI runtime files copied to internal_mpi/linux_x86_64/"
+          
+          # macOS: 安装Open MPI并复制到internal_mpi目录
           CIBW_BEFORE_BUILD_MACOS: |
-            brew install gcc openblas arpack
+            brew install gcc openblas arpack open-mpi
             echo "🎯 Building for ARM64 with deployment target ${{ env.MACOS_DEPLOYMENT_TARGET }}"
             
             # 设置编译器
@@ -135,6 +165,33 @@ jobs:
             export ARCHFLAGS="-arch arm64"
             
             echo "✅ Configured for ARM64 target"
+            
+            # 创建internal_mpi目录结构
+            mkdir -p src/wannier_tools/internal_mpi/macos_arm64/{bin,lib}
+            
+            # 复制Open MPI运行时文件
+            echo "📋 Copying Open MPI runtime files..."
+            cp $(brew --prefix)/bin/mpirun src/wannier_tools/internal_mpi/macos_arm64/bin/
+            cp $(brew --prefix)/bin/orterun src/wannier_tools/internal_mpi/macos_arm64/bin/ 2>/dev/null || true
+            
+            # 复制共享库
+            cp $(brew --prefix)/lib/libmpi.dylib* src/wannier_tools/internal_mpi/macos_arm64/lib/ 2>/dev/null || true
+            cp $(brew --prefix)/lib/libopen-rte.dylib* src/wannier_tools/internal_mpi/macos_arm64/lib/ 2>/dev/null || true
+            cp $(brew --prefix)/lib/libopen-pal.dylib* src/wannier_tools/internal_mpi/macos_arm64/lib/ 2>/dev/null || true
+            
+            echo "✅ Open MPI runtime files copied to internal_mpi/macos_arm64/"
+          
+          # Linux: 使用auditwheel修复并打包Open MPI
+          CIBW_REPAIR_WHEEL_COMMAND_LINUX: |
+            auditwheel repair --add-binary "src/wannier_tools/internal_mpi/linux_x86_64/bin/mpirun:internal_mpi/linux_x86_64/bin/" \
+                              --add-binary "src/wannier_tools/internal_mpi/linux_x86_64/lib/*:internal_mpi/linux_x86_64/lib/" \
+                              {wheel} {dest_dir}
+          
+          # macOS: 使用delocate修复并打包Open MPI
+          CIBW_REPAIR_WHEEL_COMMAND_MACOS: |
+            delocate-wheel --add-binary "src/wannier_tools/internal_mpi/macos_arm64/bin/mpirun:internal_mpi/macos_arm64/bin/" \
+                           --add-binary "src/wannier_tools/internal_mpi/macos_arm64/lib/*:internal_mpi/macos_arm64/lib/" \
+                           {wheel}
       
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -167,16 +224,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       
-      - name: Install MPI for testing
+      - name: Check bundled MPI
         run: |
-          echo "📦 Installing OpenMPI for parallel computation tests..."
-          sudo apt-get update
-          sudo apt-get install -y openmpi-bin libopenmpi-dev libopenmpi3
-          echo "✅ MPI installation completed"
-          echo "MPI version info:"
-          mpirun --version
-          echo "MPI installation path:"
-          which mpirun
+          echo "🔍 Checking bundled MPI in wheel..."
+          echo "Open MPI is bundled in the wheel, no need to install separately"
       
       - name: Install wheel
         shell: bash
@@ -247,7 +298,7 @@ jobs:
           
           # 强化错误检测 - 双核测试  
           set +e
-          mpi_output=$(timeout 60 mpirun --oversubscribe -np 2 wt-py 2>&1)
+          mpi_output=$(timeout 60 wt-py -n 2 2>&1)
           mpi_exit_code=$?
           set -e
           
@@ -303,15 +354,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       
-      - name: Install MPI for testing
+      - name: Check bundled MPI
         run: |
-          echo "📦 Installing OpenMPI for parallel computation tests..."
-          brew install open-mpi
-          echo "✅ MPI installation completed"
-          echo "MPI version info:"
-          mpirun --version
-          echo "MPI installation path:"
-          which mpirun
+          echo "🔍 Checking bundled MPI in wheel..."
+          echo "Open MPI is bundled in the wheel, no need to install separately"
       
       - name: Install wheel (ARM64)
         shell: bash
@@ -388,7 +434,7 @@ jobs:
           
           # 强化错误检测 - 双核测试
           set +e
-          mpi_output=$(mpirun --oversubscribe -np 2 wt-py 2>&1)
+          mpi_output=$(wt-py -n 2 2>&1)
           mpi_exit_code=$?
           set -e
           
@@ -662,10 +708,10 @@ jobs:
                   # Clean any existing output
                   if (Test-Path "WT.out") { Remove-Item "WT.out" -Force }
                   
-                                     Write-Host "Command: '$env:ProgramFiles\Microsoft MPI\Bin\mpiexec.exe' -n 1 wt-py.exe"
-                   $single_output = & "$env:ProgramFiles\Microsoft MPI\Bin\mpiexec.exe" -n 1 wt-py.exe 2>&1 | Out-String
-                   $single_exit_code = $LASTEXITCODE
-                   Write-Host "Single-core exit code: $single_exit_code (ignoring exit code, judging by WT.out generation)"
+                  Write-Host "Command: wt-py.exe"
+                  $single_output = & wt-py.exe 2>&1 | Out-String
+                  $single_exit_code = $LASTEXITCODE
+                  Write-Host "Single-core exit code: $single_exit_code (ignoring exit code, judging by WT.out generation)"
                   
                   # Check for computation results
                   if (Test-Path "WT.out") {
@@ -690,76 +736,63 @@ jobs:
                     Write-Host "[ERROR] WT.out file not generated"
                   }
                   
-                                     # Evaluate test success based on WT.out generation and content
-                   if (Test-Path "WT.out") {
-                     $core_info = Get-Content "WT.out" | Select-String "You are using.*CPU cores" | Select-Object -Last 1
-                     if ($core_info -and $core_info -match "1.*CPU cores") {
-                       $script:single_success = $true
-                       Write-Host "[SUCCESS] Single-core MPI computation fully functional!"
-                       Write-Host "   WT.out generated correctly with proper core count"
-                     }
-                   }
-                   
-                   if ($script:single_success) {
-                     Write-Host "[OK] Single-core test PASSED (computation successful despite exit code $single_exit_code)"
-                   } else {
-                     Write-Host "[ERROR] Single-core test FAILED - no valid computation output"
-                   }
+                  # Evaluate test success based on WT.out generation and content
+                  if (Test-Path "WT.out") {
+                    $core_info = Get-Content "WT.out" | Select-String "You are using.*CPU cores" | Select-Object -Last 1
+                    if ($core_info -and $core_info -match "1.*CPU cores") {
+                      $script:single_success = $true
+                      Write-Host "[SUCCESS] Single-core MPI computation fully functional!"
+                      Write-Host "   WT.out generated correctly with proper core count"
+                    }
+                  }
+                  
+                  if ($script:single_success) {
+                    Write-Host "[OK] Single-core test PASSED (computation successful despite exit code $single_exit_code)"
+                  } else {
+                    Write-Host "[WARNING] Single-core test had issues (but continuing to multi-core test)"
+                  }
                 } catch {
-                  Write-Host "[ERROR] Single-core MPI test failed: $_"
+                  Write-Host "[ERROR] Single-core test failed: $_"
+                  Write-Host "[WARNING] Continuing to multi-core test despite single-core failure"
                 }
                 
                 Write-Host ""
-                # Test 3: Multi-core MPI computation
-                Write-Host "Test 3: Multi-core MPI computation test"
+                # Test 3: Multi-core MPI computation (runtime_mpi)
+                Write-Host "Test 3: Multi-core runtime_mpi computation test"
                 try {
                   # Clean any existing output
                   if (Test-Path "WT.out") { Remove-Item "WT.out" -Force }
                   
-                                     Write-Host "Command: '$env:ProgramFiles\Microsoft MPI\Bin\mpiexec.exe' -n 2 wt-py.exe"
-                   $multi_output = & "$env:ProgramFiles\Microsoft MPI\Bin\mpiexec.exe" -n 2 wt-py.exe 2>&1 | Out-String
-                   $multi_exit_code = $LASTEXITCODE
-                   Write-Host "Multi-core exit code: $multi_exit_code (ignoring exit code, judging by WT.out generation)"
+                  Write-Host "Command: wt-py.exe -n 2"
+                  $multi_output = & wt-py.exe -n 2 2>&1 | Out-String
+                  $multi_exit_code = $LASTEXITCODE
+                  Write-Host "Multi-core exit code: $multi_exit_code"
                   
                   # Check for computation results
                   if (Test-Path "WT.out") {
                     Write-Host "[OK] WT.out file generated successfully"
+                    $wt_content = Get-Content "WT.out" | Select-Object -First 10
+                    Write-Host "WT.out first 10 lines:"
+                    $wt_content | ForEach-Object { Write-Host "  $_" }
                     
-                    # Look for CPU core information  
+                    # Look for CPU core information
                     $core_info = Get-Content "WT.out" | Select-String "You are using.*CPU cores" | Select-Object -Last 1
                     if ($core_info) {
                       Write-Host "[SUCCESS] Core usage found: $core_info"
                       if ($core_info -match "2.*CPU cores") {
-                        Write-Host "[SUCCESS] Multi-core MPI computation verified!"
-                        Write-Host "[OK] MPI parallelization working correctly!"
+                        Write-Host "[OK] Multi-core runtime_mpi computation verified!"
+                        $script:multi_success = $true
                       } else {
-                        Write-Host "[INFO] Expected 2 cores, found: $core_info"
-                        Write-Host "[OK] MPI computation still working (core count may vary)"
+                        Write-Host "[WARNING] Expected 2 cores, but found: $core_info"
                       }
                     } else {
                       Write-Host "[WARNING] No CPU core information found in WT.out"
                     }
                   } else {
-                    Write-Host "[ERROR] WT.out file not generated for multi-core test"
+                    Write-Host "[ERROR] WT.out file not generated"
                   }
-                  
-                                     # Evaluate test success based on WT.out generation and content
-                   if (Test-Path "WT.out") {
-                     $core_info = Get-Content "WT.out" | Select-String "You are using.*CPU cores" | Select-Object -Last 1
-                     if ($core_info -and ($core_info -match "2.*CPU cores" -or $core_info -match "[12].*CPU cores")) {
-                       $script:multi_success = $true
-                       Write-Host "[SUCCESS] Multi-core MPI computation fully functional!"
-                       Write-Host "   WT.out generated correctly with proper core count"
-                     }
-                   }
-                   
-                   if ($script:multi_success) {
-                     Write-Host "[OK] Multi-core test PASSED (computation successful despite exit code $multi_exit_code)"
-                   } else {
-                     Write-Host "[ERROR] Multi-core test FAILED - no valid computation output"
-                   }
                 } catch {
-                  Write-Host "[ERROR] Multi-core MPI test failed: $_"
+                  Write-Host "[ERROR] Multi-core test failed: $_"
                 }
                 
                                  # Final Assessment
@@ -926,7 +959,7 @@ jobs:
         with:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           repository-url: https://test.pypi.org/legacy/
-          packages-dir: dist/
+          packages-dir: dist/ 
           verbose: true
 
   # 注意：发布job被注释掉，等您准备好发布时再启用

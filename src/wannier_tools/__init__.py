@@ -1,9 +1,37 @@
 """
 WannierTools Python Wrapper
 """
-import subprocess
 import os
 import sys
+from pathlib import Path
+import platform
+
+# ------------------------------------------------------------------
+# Make bundled OpenMPI shared libraries discoverable before we import
+# the compiled Fortran extension (which links to libmpi).
+# ------------------------------------------------------------------
+
+def _inject_internal_mpi_libs():
+    sysname = platform.system().lower()
+    if sysname.startswith('linux'):
+        plat_dir = 'linux_x86_64'
+        lib_env = 'LD_LIBRARY_PATH'
+    elif sysname == 'darwin':
+        plat_dir = 'macos_arm64'
+        lib_env = 'DYLD_LIBRARY_PATH'
+    else:
+        return  # Windows: runtime_mpi, nothing to inject
+
+
+    pkg_root = Path(__file__).resolve().parent
+    mpi_lib_dir = pkg_root / 'internal_mpi' / plat_dir / 'lib'
+    if mpi_lib_dir.is_dir():
+        os.environ[lib_env] = f"{mpi_lib_dir}:{os.environ.get(lib_env,'')}"
+
+
+_inject_internal_mpi_libs()
+
+import subprocess  # after env vars set
 
 # Version of the package
 __version__ = "2.7.1"
