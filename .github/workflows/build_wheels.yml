@@ -231,42 +231,46 @@ jobs:
           
           # macOS: 使用delocate修复并打包Open MPI
           CIBW_REPAIR_WHEEL_COMMAND_MACOS: |
-            # Install zip for wheel manipulation
+            # Ensure zip/unzip are available (macOS 自带，但我们还是用 brew 以保持一致)
             brew install zip unzip
-            
-            # First repair the wheel with delocate
-            delocate-wheel {wheel}
-            
-            # Find the repaired wheel and add Open MPI files
-            wheel_dir=$(dirname {wheel})
-            wheel_name=$(basename {wheel})
-            cd "$wheel_dir"
-            
-            echo "Adding Open MPI files to $wheel_name"
-            
-            # Create a temporary directory to extract and modify the wheel
-            temp_dir=$(mktemp -d)
-            cd "$temp_dir"
-            
-            # Extract the wheel
-            unzip "../$wheel_name"
-            
-            # Create internal_mpi directory structure
-            mkdir -p wannier_tools/internal_mpi/macos_arm64/{bin,lib}
-            
-            # Copy Open MPI files from source (if they exist)
-            if [ -d "../../../src/wannier_tools/internal_mpi/macos_arm64/bin" ]; then
-              cp ../../../src/wannier_tools/internal_mpi/macos_arm64/bin/* wannier_tools/internal_mpi/macos_arm64/bin/ 2>/dev/null || true
-            fi
-            if [ -d "../../../src/wannier_tools/internal_mpi/macos_arm64/lib" ]; then
-              cp ../../../src/wannier_tools/internal_mpi/macos_arm64/lib/* wannier_tools/internal_mpi/macos_arm64/lib/ 2>/dev/null || true
-            fi
-            
-            # Recreate the wheel
-            zip -r "../$wheel_name" .
-            cd ..
-            rm -rf "$temp_dir"
-            echo "✅ Open MPI files added to $wheel_name"
+
+            # 保存仓库根目录，供后面复制 Open MPI 文件
+            repo_root=$(pwd -P)
+            MPI_BIN_SRC="$repo_root/src/wannier_tools/internal_mpi/macos_arm64/bin"
+            MPI_LIB_SRC="$repo_root/src/wannier_tools/internal_mpi/macos_arm64/lib"
+
+            # 1) 用 delocate 修复 wheel，并把结果写入 cibuildwheel 期望的 {dest_dir}
+            delocate-wheel -w {dest_dir} {wheel}
+
+            # 2) 遍历修复后的所有 wheel，把 Open MPI 运行时注入进去
+            cd {dest_dir}
+            for wheel_file in *.whl; do
+              echo "🔧 Injecting Open MPI into $wheel_file"
+
+              # 解压
+              temp_dir=$(mktemp -d)
+              ( cd "$temp_dir" && unzip "../$wheel_file" )
+
+              # 创建目录并复制文件
+              mkdir -p "$temp_dir/wannier_tools/internal_mpi/macos_arm64/bin" \
+                       "$temp_dir/wannier_tools/internal_mpi/macos_arm64/lib"
+
+              if [ -d "$MPI_BIN_SRC" ]; then
+                cp "$MPI_BIN_SRC"/* "$temp_dir/wannier_tools/internal_mpi/macos_arm64/bin/" 2>/dev/null || echo "No bin files"
+              else
+                echo "⚠️  $MPI_BIN_SRC 不存在"
+              fi
+              if [ -d "$MPI_LIB_SRC" ]; then
+                cp "$MPI_LIB_SRC"/* "$temp_dir/wannier_tools/internal_mpi/macos_arm64/lib/" 2>/dev/null || echo "No lib files"
+              else
+                echo "⚠️  $MPI_LIB_SRC 不存在"
+              fi
+
+              # 重新打包
+              ( cd "$temp_dir" && zip -qr "../$wheel_file" . )
+              rm -rf "$temp_dir"
+              echo "✅ Open MPI injected into $wheel_file"
+            done
       
       - name: Upload wheels
         uses: actions/upload-artifact@v4
