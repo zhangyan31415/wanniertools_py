@@ -425,7 +425,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          PRT=$(python -c "import importlib.resources as ir, sys; plat='linux_x86_64'; print(ir.files('wannier_tools')/'internal_mpi'/plat/'bin'/'prterun'))")
+          PRT=$(python -c "import importlib.resources as ir, sys; plat='linux_x86_64'; print(ir.files('wannier_tools')/'internal_mpi'/plat/'bin'/'prterun')")
           if [ -f "$PRT" ]; then
             echo "✅ prterun located at $PRT"
             echo "🔗 ldd output:"
@@ -567,7 +567,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          PRT=$(python -c "import importlib.resources as ir; print(ir.files('wannier_tools')/'internal_mpi'/'macos_arm64'/'bin'/'prterun'))")
+          PRT=$(python -c "import importlib.resources as ir; print(ir.files('wannier_tools')/'internal_mpi'/'macos_arm64'/'bin'/'prterun')")
           if [ -f "$PRT" ]; then
             echo "✅ prterun located at $PRT"
             echo "🔗 otool -L output:"
