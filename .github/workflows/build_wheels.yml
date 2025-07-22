@@ -148,13 +148,19 @@ jobs:
             done
 
             # prterun 是 OpenMPI ≥5 的实际启动器，也一并复制
-            for bindir in /usr/lib64/openmpi/bin /usr/bin /usr/local/bin; do
+            for bindir in /usr/libexec/openmpi/bin /usr/lib64/openmpi/bin /usr/bin /usr/local/bin; do
               if [ -f "$bindir/prterun" ]; then
                 cp "$bindir/prterun" src/wannier_tools/internal_mpi/linux_x86_64/bin/
                 echo "✅ Found prterun in $bindir"
                 break
               fi
             done
+
+            # 如果仍然没有 prterun，但找到了 orterun，则创建软链接
+            if [ ! -f src/wannier_tools/internal_mpi/linux_x86_64/bin/prterun ] && [ -f src/wannier_tools/internal_mpi/linux_x86_64/bin/orterun ]; then
+              ln -s orterun src/wannier_tools/internal_mpi/linux_x86_64/bin/prterun
+              echo "🔗 Created symlink prterun -> orterun"
+            fi
             
             # 复制共享库
             for libdir in /usr/lib64/openmpi/lib /usr/lib64 /usr/lib /usr/local/lib; do
@@ -174,10 +180,12 @@ jobs:
             done
             
             # 复制 OpenMPI 帮助文件和配置文件
-            for sharedir in /usr/lib64/openmpi/share /usr/share/openmpi /usr/local/share/openmpi; do
+            # openmpi 的帮助文件通常位于 .../share/openmpi，必须保持子目录名称以便运行时查找
+            for sharedir in /usr/lib64/openmpi/share/openmpi /usr/share/openmpi /usr/local/share/openmpi; do
               if [ -d "$sharedir" ]; then
-                cp -r "$sharedir"/* src/wannier_tools/internal_mpi/linux_x86_64/share/ 2>/dev/null || true
-                echo "✅ Found OpenMPI share files in $sharedir"
+                mkdir -p src/wannier_tools/internal_mpi/linux_x86_64/share/openmpi
+                cp -r "$sharedir"/* src/wannier_tools/internal_mpi/linux_x86_64/share/openmpi/ 2>/dev/null || true
+                echo "✅ Copied OpenMPI help files from $sharedir"
                 break
               fi
             done
