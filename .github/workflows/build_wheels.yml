@@ -200,7 +200,11 @@ jobs:
               cd "$temp_dir"
               
               # Extract the wheel
-              unzip "../$repaired_wheel"
+              if [ ! -f "$OLDPWD/$repaired_wheel" ]; then
+                echo "❌ Wheel file not found: $OLDPWD/$repaired_wheel"
+                exit 1
+              fi
+              unzip "$OLDPWD/$repaired_wheel"
               
               # Create internal_mpi directory structure
               mkdir -p wannier_tools/internal_mpi/linux_x86_64/{bin,lib}
@@ -219,7 +223,7 @@ jobs:
               find wannier_tools/internal_mpi/ -type f 2>/dev/null || echo "No files in internal_mpi"
               
               # Recreate the wheel
-              zip -r "../$repaired_wheel" .
+              zip -r "$OLDPWD/$repaired_wheel" .
               cd ..
               rm -rf "$temp_dir"
               echo "✅ Open MPI files added to $repaired_wheel"
@@ -249,6 +253,10 @@ jobs:
 
               # 解压
               temp_dir=$(mktemp -d)
+              if [ ! -f "$wheel_file" ]; then
+                echo "❌ Wheel file not found: $wheel_file"
+                exit 1
+              fi
               ( cd "$temp_dir" && unzip "$OLDPWD/$wheel_file" )
 
               # 创建目录并复制文件

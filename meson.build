@@ -7,6 +7,9 @@ project('wannier-tools', 'fortran', 'c',
   ]
 )
 
+# Import filesystem module
+fs = import('fs')
+
 # --- Compiler Detection ---
 c_compiler = meson.get_compiler('c')
 
@@ -348,13 +351,12 @@ py.install_sources([
   subdir: 'wannier_tools'
 )
 
-# Install internal_mpi files using py.install_sources
+# Install internal_mpi files (including placeholder and any MPI files created during CI)
 internal_mpi_files = files(
   'src/wannier_tools/internal_mpi/__init__.py',
-  'src/wannier_tools/internal_mpi/linux_x86_64/bin/mpirun',
-  'src/wannier_tools/internal_mpi/linux_x86_64/lib/libmpi.so',
+  'src/wannier_tools/internal_mpi/.placeholder',
 )
-py.install_sources(internal_mpi_files, subdir: 'wannier_tools', preserve_path: true)
+py.install_sources(internal_mpi_files, subdir: 'wannier_tools/internal_mpi', preserve_path: false)
 
 # Install examples and other data
 install_subdir('examples', install_dir: py.get_install_dir() / 'wannier_tools', strip_directory: false) 
