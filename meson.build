@@ -280,7 +280,7 @@ is_wheel_build = run_command('python', '-c', 'import os; print(os.environ.get("C
 # Force runtime MPI detection only when explicitly requested
 if runtime_mpi_only == 'true'
   message('Building with runtime-only MPI detection (explicitly requested)')
-elif mpi_dep.found() and host_machine.system() != 'windows'
+elif host_machine.system() != 'windows'
   # Only enable compile-time MPI on Linux and macOS
   fortran_args += ['-DMPI']
   if is_wheel_build == '1'
