@@ -65,6 +65,10 @@
      call mpi_init(ierr)
      call mpi_comm_rank(mpi_comm_world, cpuid, ierr)
      call mpi_comm_size(mpi_comm_world, num_cpu, ierr)
+     if (cpuid==0) then
+        write(stdout, '(a)') ' >>> MPI: Using compile-time MPI support (true parallel)'
+        write(*, '(a)') ' >>> MPI: Using compile-time MPI support (true parallel)'
+     endif
 #else
      !> Try to initialize MPI at runtime (works with or without MPI environment)
      call try_init_mpi()
@@ -72,6 +76,10 @@
      cpuid = runtime_cpuid
      num_cpu = runtime_num_cpu
      ierr = runtime_ierr
+     if (cpuid==0) then
+        write(stdout, '(a)') ' >>> MPI: Using runtime MPI detection (file-based fallback)'
+        write(*, '(a)') ' >>> MPI: Using runtime MPI detection (file-based fallback)'
+     endif
 #endif
 
      if (cpuid==0) open(unit=stdout, file='WT.out')

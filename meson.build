@@ -281,7 +281,7 @@ is_wheel_build = run_command('python', '-c', 'import os; print(os.environ.get("C
 if runtime_mpi_only == 'true' or is_wheel_build == '1'
   message('Building with runtime-only MPI detection (wheels mode)')
 elif mpi_dep.found()
-  #fortran_args += ['-DMPI']
+  fortran_args += ['-DMPI']
   message('Building with compile-time MPI support')
 else
   message('Building with runtime-only MPI detection (no MPI found)')
