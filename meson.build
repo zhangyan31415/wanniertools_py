@@ -277,12 +277,16 @@ endif
 runtime_mpi_only = run_command('python', '-c', 'import os; print(os.environ.get("WANNIERTOOLS_RUNTIME_MPI_ONLY", "false"))', check: false).stdout().strip()
 is_wheel_build = run_command('python', '-c', 'import os; print(os.environ.get("CIBUILDWHEEL", "false"))', check: false).stdout().strip()
 
-# Force runtime MPI detection for wheel builds or when explicitly requested
-if runtime_mpi_only == 'true' or is_wheel_build == '1'
-  message('Building with runtime-only MPI detection (wheels mode)')
+# Force runtime MPI detection only when explicitly requested
+if runtime_mpi_only == 'true'
+  message('Building with runtime-only MPI detection (explicitly requested)')
 elif mpi_dep.found()
   fortran_args += ['-DMPI']
-  message('Building with compile-time MPI support')
+  if is_wheel_build == '1'
+    message('Building wheel with compile-time MPI support (bundled OpenMPI)')
+  else
+    message('Building with compile-time MPI support')
+  endif
 else
   message('Building with runtime-only MPI detection (no MPI found)')
 endif

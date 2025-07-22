@@ -1,5 +1,0 @@
-Successfully loaded wannier_tools_ext extension module.
-Changing working directory to: /data/work/zy/software/wanniertools/wannier_tools_pip/wannier_tools/examples/Haldane_model
-Calling the Fortran `run_wannier_tools` subroutine...
-Fortran subroutine finished.
-Restoring original working directory: /data/work/zy/software/wanniertools/wannier_tools_pip/wannier_tools/examples/Haldane_model
