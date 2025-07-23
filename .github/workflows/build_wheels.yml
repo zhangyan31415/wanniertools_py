@@ -173,7 +173,12 @@ jobs:
             cp -L $CONDA_PREFIX/lib/lib*.so* $INTERNAL_MPI_DIR/lib/
 
             echo "📋 Copying OpenMPI share files (help files)..."
-            cp -r $CONDA_PREFIX/share/openmpi $INTERNAL_MPI_DIR/share/
+            for d in openmpi prte pmix; do
+              if [ -d "$CONDA_PREFIX/share/$d" ]; then
+                echo "  - Copying share/$d"
+                cp -r "$CONDA_PREFIX/share/$d" "$INTERNAL_MPI_DIR/share/" || true
+              fi
+            done
 
             # ----------------------------------------------------------------------------
             # 🔧 Fix RPATHs so executables find bundled libs
