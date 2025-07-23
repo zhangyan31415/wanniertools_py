@@ -100,7 +100,6 @@ jobs:
           echo "mpirun --version"
           mpirun --version
           echo "✅ Using clang/clang++ with gfortran for macOS builds"
-          sleep 100
       
       # Windows: 设置 Visual Studio
       - name: Set up MSVC (Windows)
@@ -555,16 +554,21 @@ jobs:
           cd examples/Haldane_model
           echo "=== 测试单核运行 ==="
           
-          # 设置bundled OpenMPI环境变量
-          export INTERNAL_MPI_DIR="$PWD/../../src/wannier_tools/internal_mpi/linux_x86_64"
-          if [ -d "$INTERNAL_MPI_DIR" ]; then
+          # 查找bundled OpenMPI目录
+          echo "🔍 Looking for bundled MPI directory..."
+          python3 -c "import wannier_tools; from pathlib import Path; pkg_root = Path(wannier_tools.__file__).parent; mpi_dir = pkg_root / 'internal_mpi' / 'linux_x86_64'; print(f'Package root: {pkg_root}'); print(f'MPI directory: {mpi_dir}'); print(f'MPI directory exists: {mpi_dir.exists()}')" 2>/dev/null || echo "❌ Python check failed"
+          
+          # 尝试动态获取MPI目录路径
+          INTERNAL_MPI_DIR=$(python3 -c "import wannier_tools; from pathlib import Path; pkg_root = Path(wannier_tools.__file__).parent; mpi_dir = pkg_root / 'internal_mpi' / 'linux_x86_64'; print(str(mpi_dir) if mpi_dir.exists() else '')" 2>/dev/null)
+          
+          if [ -n "$INTERNAL_MPI_DIR" ] && [ -d "$INTERNAL_MPI_DIR" ]; then
             export OPAL_PREFIX="$INTERNAL_MPI_DIR"
             export OPAL_PKGDATADIR="$INTERNAL_MPI_DIR/share/openmpi"
             export OPAL_DATADIR="$INTERNAL_MPI_DIR/share"
             export LD_LIBRARY_PATH="$INTERNAL_MPI_DIR/lib:$LD_LIBRARY_PATH"
-            echo "✅ Set bundled MPI environment variables"
+            echo "✅ Set bundled MPI environment variables: $INTERNAL_MPI_DIR"
           else
-            echo "⚠️ Bundled MPI directory not found: $INTERNAL_MPI_DIR"
+            echo "⚠️ Bundled MPI directory not found, using system MPI"
           fi
           
           # 强化错误检测 - 单核测试
