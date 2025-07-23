@@ -121,7 +121,7 @@ def run(input_file="wt.in", output_file=None):
                 print("   (MPI should still be installed for the runtime)")
                 print("=" * 60)
             else:
-                print(f"An error occurred during the Fortran execution: {e}")
+            print(f"An error occurred during the Fortran execution: {e}")
     finally:
         if is_main_process:
             print(f"Restoring original working directory: {original_cwd}")

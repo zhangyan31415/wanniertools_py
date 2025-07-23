@@ -596,8 +596,9 @@ jobs:
           fi
           
           # 强化错误检测 - 单核测试
+          # 使用 mpirun 启动单核任务（compile-time MPI 需要 MPI 环境）
           set +e
-          wt_output=$(timeout 60 wt-py 2>&1)
+          wt_output=$(timeout 60 mpirun -np 1 wt-py 2>&1)
           wt_exit_code=$?
           set -e
           
