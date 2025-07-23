@@ -15,6 +15,15 @@ module prec
      integer, parameter :: mpi_dp= mpi_double_precision
      integer, parameter :: mpi_dc= mpi_double_complex
      integer, parameter :: mpi_cmw= mpi_comm_world
+#else
+     ! Serial mode - define dummy MPI constants to avoid compilation errors
+     integer, parameter :: mpi_in = 4
+     integer, parameter :: mpi_dp = 8
+     integer, parameter :: mpi_dc = 16
+     integer, parameter :: mpi_cmw = 0
+     integer, parameter :: mpi_sum = 1
+     integer, parameter :: mpi_lor = 2
+     integer, parameter :: mpi_logical = 3
 #endif
      integer :: cpuid  ! CPU id for mpi
      integer :: num_cpu  ! Number of processors for mpi

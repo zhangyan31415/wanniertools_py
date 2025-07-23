@@ -2083,7 +2083,11 @@ subroutine ekbulk_elpa
 
       if (.not.(success)) then
          if (cpuid==0) write(*,*) "solve_evp_complex_2stage produced an error! Aborting..."
+#if defined (MPI)
          call MPI_ABORT(mpi_comm_world, ierr)
+#else
+         stop "solve_evp_complex_2stage produced an error!"
+#endif
       endif
       if (cpuid==0) write (*,*) "#Diagonalization done"
 
