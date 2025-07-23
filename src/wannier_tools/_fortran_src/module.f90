@@ -18,7 +18,7 @@
       integer, parameter :: mpi_dp= mpi_double_precision
       integer, parameter :: mpi_dc= mpi_double_complex
       integer, parameter :: mpi_cmw= mpi_comm_world
- #endif 
+#endif 
      integer :: cpuid  ! CPU id for mpi
      integer :: num_cpu  ! Number of processors for mpi
 
