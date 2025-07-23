@@ -142,7 +142,7 @@ jobs:
             conda config --set channel_priority strict
 
             echo "🛠️  Creating wt-build env with OpenMPI & compilers ..."
-            conda create -y -n wt-build python=3.12 \
+            conda create -y -n wt-build python=3.9 \
               gcc_linux-64 gxx_linux-64 gfortran_linux-64 \
               'openmpi=5.0.0' meson ninja numpy openblas arpack patchelf
 
