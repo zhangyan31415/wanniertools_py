@@ -361,6 +361,54 @@ jobs:
             exit 1
           fi
 
+      - name: Test serial functionality (Linux)
+        run: |
+          echo "=== Linux 串行功能测试 ==="
+          cd examples/Haldane_model
+          echo "=== 测试单核运行 ==="
+          
+          # 强化错误检测 - 单核测试
+          set +e
+          wt_output=$(wt-py 2>&1)
+          wt_exit_code=$?
+          set -e
+          
+          echo "$wt_output"
+          
+          if [ $wt_exit_code -ne 0 ]; then
+            echo "❌ Linux 单核测试失败，退出码: $wt_exit_code"
+            exit 1
+          fi
+          
+          if echo "$wt_output" | grep -q "FATAL\|ERROR\|Could not import"; then
+            echo "❌ 检测到错误信息"
+            exit 1
+          fi
+          
+          if [ -f WT.out ]; then
+            echo "✅ WT.out 文件已生成"
+            if grep -q "Congratulations!" WT.out; then
+              echo "✅ WT.out 包含 'Congratulations!'"
+            else
+              echo "❌ WT.out 不包含 'Congratulations!'"
+              exit 1
+            fi
+            
+            time_cost=$(grep "Time cost for whole program is about" WT.out | tail -1)
+            if [ -n "$time_cost" ]; then
+              echo "✅ Time cost: $time_cost"
+            else
+              echo "❌ 未找到 'Time cost for whole program is about' 信息"
+              exit 1
+            fi
+            
+            cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
+            echo "[Linux] 单核结果: $cores"
+          else
+            echo "❌ 未生成WT.out文件"
+            exit 1
+          fi
+
   test_macos:
     name: Test macOS ARM64 wheel (Python ${{ matrix.python-version }})
     needs: build_wheels
@@ -474,6 +522,20 @@ jobs:
           fi
           
           if [ -f WT.out ]; then
+            echo "✅ WT.out 文件已生成"
+            if grep -q "Congratulations!" WT.out; then
+              echo "✅ WT.out 包含 'Congratulations!'"
+            else
+              echo "❌ WT.out 不包含 'Congratulations!'"
+              exit 1
+            fi
+            time_cost=$(grep "Time cost for whole program is about" WT.out | tail -1)
+            if [ -n "$time_cost" ]; then
+              echo "✅ Time cost: $time_cost"
+            else
+              echo "❌ 未找到 'Time cost for whole program is about' 信息"
+              exit 1
+            fi
             cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
             echo "[ARM64] 单核结果: $cores"
           else
@@ -503,6 +565,20 @@ jobs:
           fi
           
           if [ -f WT.out ]; then
+            echo "✅ WT.out 文件已生成"
+            if grep -q "Congratulations!" WT.out; then
+              echo "✅ WT.out 包含 'Congratulations!'"
+            else
+              echo "❌ WT.out 不包含 'Congratulations!'"
+              exit 1
+            fi
+            time_cost=$(grep "Time cost for whole program is about" WT.out | tail -1)
+            if [ -n "$time_cost" ]; then
+              echo "✅ Time cost: $time_cost"
+            else
+              echo "❌ 未找到 'Time cost for whole program is about' 信息"
+              exit 1
+            fi
             cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
             echo "[ARM64] 双核结果: $cores"
           else
@@ -602,11 +678,27 @@ jobs:
             # Check for computation results
             if (Test-Path "WT.out") {
               Write-Host "[OK] WT.out file generated successfully"
-              $core_info = Get-Content "WT.out" | Select-String "You are using.*CPU cores" | Select-Object -Last 1
+              $content = Get-Content "WT.out" | Out-String
+              if ($content -match "Congratulations!") {
+                Write-Host "✅ WT.out 包含 'Congratulations!'"
+              } else {
+                Write-Host "❌ WT.out 不包含 'Congratulations!'"
+                # exit 1
+              }
+              
+              $time_cost = $content | Select-String "Time cost for whole program is about" | Select-Object -Last 1
+              if ($time_cost) {
+                Write-Host "✅ Time cost: $($time_cost.ToString().Trim())"
+              } else {
+                Write-Host "❌ 未找到 'Time cost for whole program is about' 信息"
+                # exit 1
+              }
+
+              $core_info = $content | Select-String "You are using.*CPU cores" | Select-Object -Last 1
               if ($core_info -and $core_info -match "1.*CPU cores") {
                 Write-Host "[SUCCESS] Single-core computation verified!"
               } else {
-                Write-Host "[WARNING] Core count verification failed. Found: $core_info"
+                Write-Host "[WARNING] Core count verification failed. Found: $($core_info.ToString().Trim())"
               }
             } else {
               Write-Host "[ERROR] WT.out file not generated"
