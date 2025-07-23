@@ -11,10 +11,10 @@ RUN yum install -y --setopt=keepcache=0 \
 
 # 为容器里所有 CPython 版本预装 Python 构建依赖
 # 这样 cibuildwheel 就不需要重新下载这些包了
-RUN for PYBIN in /opt/python/cp39/bin; do \
-        if [ -f "$PYBIN/pip" ]; then \
-            echo "Installing deps for $PYBIN" && \
-            "$PYBIN/pip" install --no-cache-dir \
+RUN for PYBIN_DIR in /opt/python/cp39-*/bin; do \
+        if [ -f "$PYBIN_DIR/pip" ]; then \
+            echo "Installing build dependencies for $PYBIN_DIR" && \
+            "$PYBIN_DIR/pip" install --no-cache-dir \
                 meson>=0.64.0 \
                 meson-python>=0.13.0 \
                 ninja \
