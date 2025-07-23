@@ -1,6 +1,4 @@
-
-
-  module prec
+module prec
      !>> A module controls the precision. 
      !> when the nnzmax is larger than 2,147,483,647 then li=8,
      !> otherwise, li=4. 
@@ -12,13 +10,8 @@
   module wmpi
      use prec
 #if defined (MPI)
-     !  include 'mpif.h'
-      use mpi
-      integer, parameter :: mpi_in= mpi_integer
-      integer, parameter :: mpi_dp= mpi_double_precision
-      integer, parameter :: mpi_dc= mpi_double_complex
-      integer, parameter :: mpi_cmw= mpi_comm_world
-#endif 
+     include 'mpif.h'
+#endif
      integer :: cpuid  ! CPU id for mpi
      integer :: num_cpu  ! Number of processors for mpi
 

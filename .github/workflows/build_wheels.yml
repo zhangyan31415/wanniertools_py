@@ -125,15 +125,13 @@ jobs:
           # macOS部署目标配置 (使用顶部env中定义的版本)
           CIBW_ENVIRONMENT_MACOS: ${{ matrix.cibw_archs == 'arm64' && format('MACOSX_DEPLOYMENT_TARGET={0}', env.MACOS_DEPLOYMENT_TARGET) || '' }}
           
-          # Linux 编译环境设置
-          CIBW_ENVIRONMENT_LINUX: 'PATH="$HOME/miniforge/envs/wt-build/bin:$PATH" FC=gfortran FFLAGS="-I$HOME/miniforge/envs/wt-build/include -fallow-argument-mismatch -ffree-line-length-none" CPPFLAGS="-I$HOME/miniforge/envs/wt-build/include" LDFLAGS="-L$HOME/miniforge/envs/wt-build/lib -lmpi -Wl,-rpath,$HOME/miniforge/envs/wt-build/lib" LD_LIBRARY_PATH="$HOME/miniforge/envs/wt-build/lib"'
+          # Linux 编译环境设置: 使用 mpifort 包装器
+          CIBW_ENVIRONMENT_LINUX: 'PATH="$HOME/miniforge/envs/wt-build/bin:$PATH" FC=mpifort FFLAGS="-fallow-argument-mismatch -ffree-line-length-none"'
 
-          # Linux: 使用 Miniforge + conda-forge 打包 OpenMPI 运行时
+          # Linux: 使用 Miniforge + conda-forge 打包 MPICH 运行时
           CIBW_BEFORE_BUILD_LINUX: |
             set -e
             echo "📦 Installing Miniforge (silent)..."
-            # MINIFORGE=Miniforge3-Linux-x86_64.sh
-            # curl -fsSL https://github.com/conda-forge/miniforge/releases/latest/download/$MINIFORGE -o $MINIFORGE
             MINIFORGE=Miniforge3-4.10.3-5-Linux-x86_64.sh
             curl -fsSL https://github.com/conda-forge/miniforge/releases/download/4.10.3-5/$MINIFORGE -o $MINIFORGE
             bash $MINIFORGE -b -p $HOME/miniforge
@@ -143,9 +141,9 @@ jobs:
             eval "$( $HOME/miniforge/bin/conda shell.bash hook )"
             conda config --set channel_priority strict
 
-            echo "🛠️  Creating wt-build env with MPICH & compilers ..."
+            echo "🛠️  Creating wt-build env with MPICH & full toolchain ..."
             conda create -y -n wt-build python=3.9 \
-              gcc_linux-64 gxx_linux-64 gfortran_linux-64 binutils_linux-64 \
+              gcc_linux-64 gxx_linux-64 gfortran_linux-64 binutils_linux-64 sysroot_linux-64 \
               'mpich' meson ninja numpy openblas arpack patchelf
 
             conda activate wt-build
