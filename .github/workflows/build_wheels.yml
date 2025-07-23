@@ -176,6 +176,8 @@ jobs:
             for d in openmpi prte pmix; do
               if [ -d "$CONDA_PREFIX/share/$d" ]; then
                 echo "  - Copying share/$d"
+                #打印文件下所有文件
+                ls -la "$CONDA_PREFIX/share/$d"
                 cp -r "$CONDA_PREFIX/share/$d" "$INTERNAL_MPI_DIR/share/" || true
               fi
             done
