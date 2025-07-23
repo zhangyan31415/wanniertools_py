@@ -16,7 +16,8 @@
      integer :: num_cpu  ! Number of processors for mpi
 
 #if defined (MPI)
-     include 'mpif.h'
+    !  include 'mpif.h'
+     use mpi
      integer, parameter :: mpi_in= mpi_integer
      integer, parameter :: mpi_dp= mpi_double_precision
      integer, parameter :: mpi_dc= mpi_double_complex
