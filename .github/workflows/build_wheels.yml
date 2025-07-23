@@ -147,6 +147,24 @@ jobs:
             file /usr/lib64/openmpi3/bin/mpirun || true
             echo "🔍 Check if mpirun is symlink:"
             readlink -f /usr/lib64/openmpi3/bin/mpirun || echo "Not a symlink"
+
+            echo "🔍 In-depth check of system MPI launchers:"
+            for exe in mpirun orterun prterun; do
+              path="/usr/lib64/openmpi3/bin/$exe"
+              if [ -e "$path" ]; then
+                echo "--- Details for $exe ---"
+                echo "Path: $path"
+                ls -la "$path"
+                echo "File type: $(file "$path")"
+                if [ -L "$path" ]; then
+                  echo "Symlink target: $(readlink -f "$path")"
+                fi
+                echo "Version output:"
+                "$path" --version 2>&1 | head -n 5 || echo "--> Version check failed"
+              else
+                echo "--- $exe not found ---"
+              fi
+            done
             
             # Create mpifort symlink if it doesn't exist (older OpenMPI versions)
             if [ ! -f /usr/lib64/openmpi3/bin/mpifort ] && [ -f /usr/lib64/openmpi3/bin/mpif90 ]; then
@@ -608,11 +626,15 @@ jobs:
           INTERNAL_MPI_DIR=$(python3 -c "import wannier_tools; from pathlib import Path; pkg_root = Path(wannier_tools.__file__).parent; mpi_dir = pkg_root / 'internal_mpi' / 'linux_x86_64'; print(str(mpi_dir) if mpi_dir.exists() else '')" 2>/dev/null)
           
           if [ -n "$INTERNAL_MPI_DIR" ] && [ -d "$INTERNAL_MPI_DIR" ]; then
+            # IMPORTANT: Prepend bundled bin to PATH to ensure our mpirun is used
+            export PATH="$INTERNAL_MPI_DIR/bin:$PATH"
             export OPAL_PREFIX="$INTERNAL_MPI_DIR"
             export OPAL_PKGDATADIR="$INTERNAL_MPI_DIR/share/openmpi"
             export OPAL_DATADIR="$INTERNAL_MPI_DIR/share"
             export LD_LIBRARY_PATH="$INTERNAL_MPI_DIR/lib:$LD_LIBRARY_PATH"
             echo "✅ Set bundled MPI environment variables: $INTERNAL_MPI_DIR"
+            echo "  PATH=$PATH"
+            echo "  which mpirun: $(which mpirun)"
           else
             echo "⚠️ Bundled MPI directory not found, using system MPI"
           fi
