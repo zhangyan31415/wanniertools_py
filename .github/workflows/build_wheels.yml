@@ -153,45 +153,44 @@ jobs:
             echo "✅ conda env ready at $CONDA_PREFIX"
 
             # ----------------------------------------------------------------------------
-            # 🗄️  Bundle OpenMPI runtime into package directory
+            # 🗄️  Bundle MPICH runtime into package directory
             # ----------------------------------------------------------------------------
             INTERNAL_MPI_DIR="src/wannier_tools/internal_mpi/linux_x86_64"
             mkdir -p $INTERNAL_MPI_DIR/{bin,lib,share}
 
-            echo "📋 Copying MPICH executables..."
-            echo "  - Copying mpirun"
-            cp -L $CONDA_PREFIX/bin/mpirun $INTERNAL_MPI_DIR/bin/
-            echo " file in conda_prefix: $CONDA_PREFIX/bin/mpirun"
-            ls -la $CONDA_PREFIX/bin/
-            echo "  - Copying mpiexec"
-            cp -L $CONDA_PREFIX/bin/mpiexec $INTERNAL_MPI_DIR/bin/
-            if [ -f $CONDA_PREFIX/bin/hydra_pmi_proxy ]; then
-              echo "  - Copying hydra_pmi_proxy"
-              cp -L $CONDA_PREFIX/bin/hydra_pmi_proxy $INTERNAL_MPI_DIR/bin/
-            fi
-
-            echo "📋 Copying MPICH libraries..."
-            cp -L $CONDA_PREFIX/lib/lib*.so* $INTERNAL_MPI_DIR/lib/
-
-            echo "📋 Copying MPICH share files..."
-            for d in mpich doc; do
-              if [ -d "$CONDA_PREFIX/share/$d" ]; then
-                echo "  - Copying share/$d"
-                echo "    Source: $CONDA_PREFIX/share/$d"
-                echo "    Target: $INTERNAL_MPI_DIR/share/$d"
-                cp -rL "$CONDA_PREFIX/share/$d" "$INTERNAL_MPI_DIR/share/"
-                ls -la "$INTERNAL_MPI_DIR/share/"
-                echo "    ✅ Copied successfully"
-              else
-                echo "  - Share directory $d not found, skipping"
+            # Use a subshell to unset LD_LIBRARY_PATH for system commands like 'cp'
+            # to avoid relocation errors with conda-provided libraries.
+            (
+              unset LD_LIBRARY_PATH
+              echo "📋 Copying MPICH executables (with clean LD_LIBRARY_PATH)..."
+              echo "  - Copying mpirun"
+              /bin/cp -L $CONDA_PREFIX/bin/mpirun $INTERNAL_MPI_DIR/bin/
+              echo "  - Copying mpiexec"
+              /bin/cp -L $CONDA_PREFIX/bin/mpiexec $INTERNAL_MPI_DIR/bin/
+              if [ -f $CONDA_PREFIX/bin/hydra_pmi_proxy ]; then
+                echo "  - Copying hydra_pmi_proxy"
+                /bin/cp -L $CONDA_PREFIX/bin/hydra_pmi_proxy $INTERNAL_MPI_DIR/bin/
               fi
-            done
-            
-            echo "📋 Copying MPICH config files..."
-            if [ -d "$CONDA_PREFIX/etc" ]; then
-              mkdir -p $INTERNAL_MPI_DIR/etc
-              cp -r $CONDA_PREFIX/etc/* $INTERNAL_MPI_DIR/etc/ 2>/dev/null || true
-            fi
+
+              echo "📋 Copying MPICH libraries..."
+              /bin/cp -L $CONDA_PREFIX/lib/lib*.so* $INTERNAL_MPI_DIR/lib/
+
+              echo "📋 Copying MPICH share files..."
+              for d in mpich doc; do
+                if [ -d "$CONDA_PREFIX/share/$d" ]; then
+                  echo "  - Copying share/$d"
+                  /bin/cp -rL "$CONDA_PREFIX/share/$d" "$INTERNAL_MPI_DIR/share/"
+                else
+                  echo "  - Share directory $d not found, skipping"
+                fi
+              done
+              
+              echo "📋 Copying MPICH config files..."
+              if [ -d "$CONDA_PREFIX/etc" ]; then
+                mkdir -p $INTERNAL_MPI_DIR/etc
+                /bin/cp -r $CONDA_PREFIX/etc/* $INTERNAL_MPI_DIR/etc/ 2>/dev/null || true
+              fi
+            )
 
 
             # Verify critical files were copied
