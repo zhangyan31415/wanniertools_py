@@ -114,47 +114,13 @@ endif
 # ---- Use meson dependency() for automatic library detection -------------------------
 # Try to find MPI dependency
 # On Windows, use MSYS2 gfortran-compatible MPI to avoid ABI issues
-if build_machine.system() == 'windows'
-  message('Windows detected: using MSYS2 gfortran-compatible MPI for ABI compatibility')
-  message('Reason: Official MS-MPI uses Intel Fortran ABI, incompatible with gfortran')
-  message('Solution: MSYS2 mingw-w64-x86_64-msmpi provides gfortran-compatible libraries')
-  
-  # Force check for MSYS2 MPI installation
-  msys2_mpi_inc = 'C:/msys64/mingw64/include'
-  msys2_mpi_lib = 'C:/msys64/mingw64/lib'
-  
-  # Verify MSYS2 gfortran-compatible MPI is installed
-  mpi_h_exists = run_command('python', '-c', 
-    'import os; exit(0 if os.path.exists(r"' + msys2_mpi_inc + '/mpi.h") else 1)', 
-    check: false).returncode() == 0
-  mpi_lib_exists = run_command('python', '-c', 
-    'import os; exit(0 if os.path.exists(r"' + msys2_mpi_lib + '/libmsmpi.dll.a") else 1)', 
-    check: false).returncode() == 0
-    
-  if mpi_h_exists and mpi_lib_exists
-    message('[OK] MSYS2 gfortran-compatible MPI found')
-    message('   Headers: ' + msys2_mpi_inc + '/mpi.h')
-    message('   Library: ' + msys2_mpi_lib + '/libmsmpi.dll.a')
-    
-    # Create MPI dependency with explicit MSYS2 paths
-            mpi_dep = declare_dependency(
-      include_directories: include_directories(msys2_mpi_inc),
-      dependencies: [
-        c_compiler.find_library('msmpi', dirs: msys2_mpi_lib, required: true)
-      ],
-      compile_args: ['-DHAVE_MPI']
-    )
-    message('[OK] Hybrid gfortran+MS-MPI compatibility configured successfully')
-    message('   Build: gfortran + MSYS2 libs (ABI consistent)')
-    message('   Runtime: Official MS-MPI mpiexec.exe (from separate installation)')
-  else
-    error('MSYS2 gfortran-compatible MPI not found!\n' +
-          'Required: pacman -S mingw-w64-x86_64-msmpi\n' + 
-          'This package provides gfortran-compatible MPI libraries to avoid ABI mismatch.')
-  endif
-else
-  # Linux/macOS: use standard MPI detection
+if build_machine.system() == 'darwin'
+  # macOS: use standard MPI detection
   mpi_dep = dependency('mpi', language: 'fortran', required: false)
+else
+  # Linux/Windows: Force serial build, do not look for MPI
+  message('Building in serial mode for Linux/Windows: MPI dependency explicitly set to not found.')
+  mpi_dep = dependency('', required: false) # Explicitly set to not found
 endif
 
 # Try to find libraries using meson's dependency system
