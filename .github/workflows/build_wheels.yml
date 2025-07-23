@@ -570,7 +570,7 @@ jobs:
             export OMPI_MCA_shmem=posix  # 强制使用 POSIX 共享内存
             export OMPI_MCA_btl=self,tcp  # 限制通信方式
 
-            $OPAL_PREFIX/bin/ompi_info --all | grep -E "shmem|accelerator|MCA"
+            $OPAL_PREFIX/bin/ompi_info --all | grep -E "shmem|accelerator|MCA" || true
             ldd $OPAL_PREFIX/bin/mpirun
 
 
