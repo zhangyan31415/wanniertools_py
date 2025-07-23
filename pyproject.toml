@@ -59,6 +59,9 @@ install = ["--tags=python-runtime,extension,devel"]
 where = ["src"]
 namespaces = true
 
+[tool.meson-python.package-data]
+"wannier_tools.internal_mpi" = ["**/*"] 
+
 [tool.setuptools.package-data]
 "wannier_tools.internal_mpi" = ["**/*"]
 
