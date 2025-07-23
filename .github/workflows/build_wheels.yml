@@ -126,86 +126,59 @@ jobs:
           CIBW_ENVIRONMENT_MACOS: ${{ matrix.cibw_archs == 'arm64' && format('MACOSX_DEPLOYMENT_TARGET={0}', env.MACOS_DEPLOYMENT_TARGET) || '' }}
           
           # Linux 编译环境设置
-          CIBW_ENVIRONMENT_LINUX: 'PATH="/opt/openmpi/bin:/usr/local/bin:$PATH" FC=mpifort FFLAGS="-fallow-argument-mismatch -ffree-line-length-none"'
-          
-          # Linux: 安装Open MPI并复制到internal_mpi目录
+          CIBW_ENVIRONMENT_LINUX: 'PATH="$HOME/miniforge/envs/wt-build/bin:$PATH" FC=mpifort FFLAGS="-fallow-argument-mismatch -ffree-line-length-none"'
+ 
+          # Linux: 使用 Miniforge + conda-forge 打包 OpenMPI 运行时
           CIBW_BEFORE_BUILD_LINUX: |
             set -e
-            echo "📦 Installing build dependencies for Linux..."
-            # manylinux images already have gcc/g++/gfortran, make, etc.
-            yum install -y wget hwloc-devel libevent-devel numactl-devel patchelf
-            echo "✅ Dependencies installed"
+            echo "📦 Installing Miniforge (silent)..."
+            MINIFORGE=Miniforge3-Linux-x86_64.sh
+            curl -fsSL https://github.com/conda-forge/miniforge/releases/latest/download/$MINIFORGE -o $MINIFORGE
+            bash $MINIFORGE -b -p $HOME/miniforge
+            rm -f $MINIFORGE
 
-            # ----------------------------------------------------------------------------
-            # 🛠️ Build OpenMPI 5 from source (static-less, shared libs only)
-            # ----------------------------------------------------------------------------
-            export OPENMPI_VER="5.0.2"
-            export OPENMPI_PREFIX="/opt/openmpi"
-            echo "⬇️  Downloading OpenMPI ${OPENMPI_VER} ..."
-            wget -q https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-${OPENMPI_VER}.tar.gz
-            tar -xf openmpi-${OPENMPI_VER}.tar.gz
-            cd openmpi-${OPENMPI_VER}
-            echo "⚙️  Configuring OpenMPI ..."
-            ./configure \
-              --prefix=${OPENMPI_PREFIX} \
-              --disable-static \
-              --enable-mpirun-prefix-by-default \
-              --with-internal-hwloc \
-              --with-internal-libevent \
-              --disable-mpi-java \
-              --disable-oshmem \
-              --disable-oshmem-fortran || { cat config.log; exit 1; }
-            echo "🛠️  Building OpenMPI (parallel) ..."
-            make -j$(nproc)
-            echo "📦 Installing OpenMPI to ${OPENMPI_PREFIX} ..."
-            make install
-            cd ..
-            rm -rf openmpi-${OPENMPI_VER} openmpi-${OPENMPI_VER}.tar.gz
-            echo "✅ OpenMPI ${OPENMPI_VER} installed to ${OPENMPI_PREFIX}"
+            # Initialize conda for bash
+            eval "$( $HOME/miniforge/bin/conda shell.bash hook )"
+            conda config --set channel_priority strict
 
-            # Add OpenMPI to PATH for subsequent build steps
-            export PATH="${OPENMPI_PREFIX}/bin:$PATH"
-            echo "PATH=${OPENMPI_PREFIX}/bin:$PATH" >> $GITHUB_ENV
-            echo "LD_LIBRARY_PATH=${OPENMPI_PREFIX}/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+            echo "🛠️  Creating wt-build env with OpenMPI & compilers ..."
+            conda create -y -n wt-build python=3.12 \
+                          gcc_linux-64 gxx_linux-64 gfortran_linux-64 \
+                          openmpi=4.1 mpi4py meson ninja numpy openblas arpack patchelf
 
-            # Verify mpirun works
-            echo "🔍 OpenMPI version:"; mpirun --version
-            echo "🔍 mpifort version:"; mpifort --version || true
+            conda activate wt-build
+            echo "✅ conda env ready at $CONDA_PREFIX"
 
             # ----------------------------------------------------------------------------
             # 🗄️  Bundle OpenMPI runtime into package directory
             # ----------------------------------------------------------------------------
             INTERNAL_MPI_DIR="src/wannier_tools/internal_mpi/linux_x86_64"
             mkdir -p $INTERNAL_MPI_DIR/{bin,lib,share}
+
             echo "📋 Copying OpenMPI executables..."
-            cp -L ${OPENMPI_PREFIX}/bin/{mpirun,prterun,orterun} $INTERNAL_MPI_DIR/bin/
-            # ensure mpifort for compile-time detection is visible via PATH already
+            cp -L $CONDA_PREFIX/bin/{mpirun,prterun,orterun} $INTERNAL_MPI_DIR/bin/
 
             echo "📋 Copying OpenMPI libraries..."
-            cp -L ${OPENMPI_PREFIX}/lib/lib*.so* $INTERNAL_MPI_DIR/lib/
+            cp -L $CONDA_PREFIX/lib/lib*.so* $INTERNAL_MPI_DIR/lib/
 
             echo "📋 Copying OpenMPI share files (help files)..."
-            cp -r ${OPENMPI_PREFIX}/share/openmpi/* $INTERNAL_MPI_DIR/share/openmpi/
+            cp -r $CONDA_PREFIX/share/openmpi $INTERNAL_MPI_DIR/share/
 
             # ----------------------------------------------------------------------------
-            # 🛠️  Fix RPATHs in executables and libraries
+            # 🔧 Fix RPATHs so executables find bundled libs
             # ----------------------------------------------------------------------------
-            echo "🔧 Fixing RPATH for bundled MPI runtime..."
             for exe in $INTERNAL_MPI_DIR/bin/*; do
               [ -L "$exe" ] && continue
-              patchelf --remove-rpath "$exe" || true
               patchelf --force-rpath --set-rpath '$ORIGIN/../lib' "$exe"
             done
             for lib in $INTERNAL_MPI_DIR/lib/*.so*; do
               [ -L "$lib" ] && continue
-              patchelf --remove-rpath "$lib" || true
               patchelf --force-rpath --set-rpath '$ORIGIN' "$lib"
             done
-            echo "✅ RPATH fixed"
 
-            # Quick sanity test
-            echo "🧪 Quick mpirun smoke test (internal)..."
-            LD_LIBRARY_PATH="$INTERNAL_MPI_DIR/lib" $INTERNAL_MPI_DIR/bin/mpirun -np 1 echo hello || echo "⚠️ mpirun smoke test failed"
+            echo "🧪 Smoke test mpirun ..."
+            LD_LIBRARY_PATH="$INTERNAL_MPI_DIR/lib" $INTERNAL_MPI_DIR/bin/mpirun -np 1 echo hello
+            echo "✅ OpenMPI runtime bundled"
 
           # macOS: 安装Open MPI并复制到internal_mpi目录
           CIBW_BEFORE_BUILD_MACOS: |
