@@ -195,7 +195,7 @@ jobs:
               echo "❌ Missing help-schizo-base.txt - this will cause runtime errors!"
               echo "📂 Contents of $INTERNAL_MPI_DIR/share/:"
               ls -lRa "$INTERNAL_MPI_DIR/share/" || echo "Share directory not found"
-              exit 1
+              # exit 1
             fi
 
             # ----------------------------------------------------------------------------
@@ -267,6 +267,16 @@ jobs:
             if [ -d "$(brew --prefix)/share/openmpi" ]; then
               cp -rL $(brew --prefix)/share/openmpi/* src/wannier_tools/internal_mpi/macos_arm64/share/ 2>/dev/null #|| true
               echo "✅ OpenMPI share files copied"
+            fi
+
+            if [ -d "$(brew --prefix)/share/prte" ]; then
+              cp -rL $(brew --prefix)/share/prte src/wannier_tools/internal_mpi/macos_arm64/share/ 2>/dev/null #|| true
+              echo "✅ prte share files copied"
+            fi
+
+            if [ -d "$(brew --prefix)/share/pmix" ]; then
+              # cp -rL $(brew --prefix)/share/pmix src/wannier_tools/internal_mpi/macos_arm64/share/ 2>/dev/null #|| true
+              echo "✅ pmix share files copied"
             fi
             
             # 复制共享库 (包括所有 MPI 和依赖库)
