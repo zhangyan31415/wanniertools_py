@@ -144,7 +144,7 @@ jobs:
             echo "🛠️  Creating wt-build env with OpenMPI & compilers ..."
             conda create -y -n wt-build python=3.12 \
                           gcc_linux-64 gxx_linux-64 gfortran_linux-64 \
-                          openmpi=4.1 mpi4py meson ninja numpy openblas arpack patchelf
+                          'openmpi>=5' mpi4py meson ninja numpy openblas arpack patchelf
 
             conda activate wt-build
             echo "✅ conda env ready at $CONDA_PREFIX"
@@ -156,7 +156,16 @@ jobs:
             mkdir -p $INTERNAL_MPI_DIR/{bin,lib,share}
 
             echo "📋 Copying OpenMPI executables..."
-            cp -L $CONDA_PREFIX/bin/{mpirun,prterun,orterun} $INTERNAL_MPI_DIR/bin/
+            echo "  - Copying mpirun"
+            cp -L $CONDA_PREFIX/bin/mpirun $INTERNAL_MPI_DIR/bin/
+            if [ -f $CONDA_PREFIX/bin/prterun ]; then
+              echo "  - Copying prterun"
+              cp -L $CONDA_PREFIX/bin/prterun $INTERNAL_MPI_DIR/bin/
+            fi
+            if [ -f $CONDA_PREFIX/bin/orterun ]; then
+              echo "  - Copying orterun"
+              cp -L $CONDA_PREFIX/bin/orterun $INTERNAL_MPI_DIR/bin/
+            fi
 
             echo "📋 Copying OpenMPI libraries..."
             cp -L $CONDA_PREFIX/lib/lib*.so* $INTERNAL_MPI_DIR/lib/
