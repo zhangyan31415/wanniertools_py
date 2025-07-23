@@ -140,9 +140,13 @@ jobs:
             module load mpi/openmpi3-x86_64
             echo "✅ OpenMPI3 module loaded"
             
-            # Check available MPI compilers
-            echo "🔍 Available MPI compilers:"
-            ls -la /usr/lib64/openmpi3/bin/mpi* || true
+            # Check available MPI compilers and launchers
+            echo "🔍 Available MPI compilers and launchers:"
+            ls -la /usr/lib64/openmpi3/bin/ | grep -E "(mpi|orte|prte)" || true
+            echo "🔍 Check mpirun type:"
+            file /usr/lib64/openmpi3/bin/mpirun || true
+            echo "🔍 Check if mpirun is symlink:"
+            readlink -f /usr/lib64/openmpi3/bin/mpirun || echo "Not a symlink"
             
             # Create mpifort symlink if it doesn't exist (older OpenMPI versions)
             if [ ! -f /usr/lib64/openmpi3/bin/mpifort ] && [ -f /usr/lib64/openmpi3/bin/mpif90 ]; then
@@ -170,7 +174,16 @@ jobs:
             mkdir -p $INTERNAL_MPI_DIR/{bin,lib,share}
 
             # Copy executables from /usr/lib64/openmpi3/bin (system OpenMPI3)
-            cp -L /usr/lib64/openmpi3/bin/{mpirun,orterun} $INTERNAL_MPI_DIR/bin/ 2>/dev/null || true
+            # Use -L to follow symlinks and copy the actual executable
+            echo "📋 Copying MPI executables..."
+            if [ -f /usr/lib64/openmpi3/bin/mpirun ]; then
+              echo "  - Copying mpirun (following symlinks)"
+              cp -L /usr/lib64/openmpi3/bin/mpirun $INTERNAL_MPI_DIR/bin/ 2>/dev/null || true
+            fi
+            if [ -f /usr/lib64/openmpi3/bin/orterun ]; then
+              echo "  - Copying orterun"
+              cp -L /usr/lib64/openmpi3/bin/orterun $INTERNAL_MPI_DIR/bin/ 2>/dev/null || true
+            fi
             # Copy mpifort or mpif90
             if [ -f /usr/lib64/openmpi3/bin/mpifort ]; then
               cp -L /usr/lib64/openmpi3/bin/mpifort $INTERNAL_MPI_DIR/bin/
@@ -286,13 +299,22 @@ jobs:
               echo "✅ prterun located at $INTERNAL_MPI_DIR/bin/prterun"
               echo "🔗 ldd output:"
               ldd $INTERNAL_MPI_DIR/bin/prterun || echo "ldd failed"
-              echo "🚀 Testing prterun --help:"
+              echo "🚀 Testing MPI executables:"
               # Set environment for bundled MPI
               export OPAL_PREFIX="$PWD/$INTERNAL_MPI_DIR"
               export OPAL_PKGDATADIR="$PWD/$INTERNAL_MPI_DIR/share/openmpi"
               export OPAL_DATADIR="$PWD/$INTERNAL_MPI_DIR/share"
               export LD_LIBRARY_PATH="$PWD/$INTERNAL_MPI_DIR/lib:$LD_LIBRARY_PATH"
-              $INTERNAL_MPI_DIR/bin/prterun --help 2>&1 | head -10 || echo "❌ prterun --help failed"
+              
+              echo "  Testing prterun:"
+              $INTERNAL_MPI_DIR/bin/prterun --help 2>&1 | head -5 || echo "❌ prterun --help failed"
+              
+              if [ -f $INTERNAL_MPI_DIR/bin/mpirun ]; then
+                echo "  Testing mpirun -np option:"
+                $INTERNAL_MPI_DIR/bin/mpirun -np 1 echo "MPI test" 2>&1 || echo "❌ mpirun -np test failed"
+              else
+                echo "❌ mpirun not found in bundled directory"
+              fi
             else
               echo "⚠️ prterun not found!"
             fi
