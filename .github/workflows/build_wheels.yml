@@ -146,7 +146,7 @@ jobs:
             echo "🛠️  Creating wt-build env with OpenMPI & compilers ..."
             conda create -y -n wt-build python=3.9 \
               gcc_linux-64 gxx_linux-64 gfortran_linux-64 \
-              'openmpi=5.0.0' meson ninja numpy openblas arpack patchelf
+              'openmpi=4.1.5' meson ninja numpy openblas arpack patchelf
 
             conda activate wt-build
             echo "✅ conda env ready at $CONDA_PREFIX"
@@ -578,6 +578,12 @@ jobs:
           
           # 强化错误检测 - 单核测试
           # 使用 mpirun 启动单核任务（compile-time MPI 需要 MPI 环境）
+
+          export OMPI_MCA_opal_debug=1
+          # 检查 MPI 是否能运行简单命令
+          mpirun -np 1 hostname
+          ldd $INTERNAL_MPI_DIR/bin/mpirun
+
           set +e
           wt_output=$(timeout 60 wt-py 2>&1)
           wt_exit_code=$?
