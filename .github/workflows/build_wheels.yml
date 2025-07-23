@@ -134,7 +134,7 @@ jobs:
             echo "📦 Installing Miniforge (silent)..."
             # MINIFORGE=Miniforge3-Linux-x86_64.sh
             # curl -fsSL https://github.com/conda-forge/miniforge/releases/latest/download/$MINIFORGE -o $MINIFORGE
-            MINIFORGE=Miniforge3-Linux-x86_64-4.10.3-5.sh
+            MINIFORGE=Miniforge3-4.10.3-5-Linux-x86_64.sh
             curl -fsSL https://github.com/conda-forge/miniforge/releases/download/4.10.3-5/$MINIFORGE -o $MINIFORGE
             bash $MINIFORGE -b -p $HOME/miniforge
             rm -f $MINIFORGE
