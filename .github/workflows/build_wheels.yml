@@ -221,7 +221,7 @@ jobs:
             # 🧪 Smoke test bundled MPI
             # ----------------------------------------------------------------------------
             echo "🧪 Smoke test mpirun ..."
-            $INTERNAL_MPI_DIR/bin/prterun --allow-run-as-root --help > /dev/null
+            $INTERNAL_MPI_DIR/bin/orterun --allow-run-as-root --help > /dev/null
             echo "✅ prterun works!"
             
             echo "🔍 Debug: Check bundled dependencies..."
