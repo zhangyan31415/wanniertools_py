@@ -358,12 +358,10 @@ py.install_sources([
   subdir: 'wannier_tools'
 )
 
-# Install internal_mpi files (including placeholder and any MPI files created during CI)
-internal_mpi_files = files(
-  'src/wannier_tools/internal_mpi/__init__.py',
-  'src/wannier_tools/internal_mpi/.placeholder',
-)
-py.install_sources(internal_mpi_files, subdir: 'wannier_tools/internal_mpi', preserve_path: false)
+# Install internal_mpi directory (including all MPI runtime files created during CI)
+install_subdir('src/wannier_tools/internal_mpi', 
+  install_dir: py.get_install_dir() / 'wannier_tools', 
+  strip_directory: true)
 
 # Install examples and other data
 install_subdir('examples', install_dir: py.get_install_dir() / 'wannier_tools', strip_directory: false) 
