@@ -176,11 +176,26 @@ jobs:
             for d in openmpi prte pmix; do
               if [ -d "$CONDA_PREFIX/share/$d" ]; then
                 echo "  - Copying share/$d"
-                #打印文件下所有文件
-                ls -la "$CONDA_PREFIX/share/$d"
-                cp -r "$CONDA_PREFIX/share/$d" "$INTERNAL_MPI_DIR/share/" #|| true
+                echo "    Source: $CONDA_PREFIX/share/$d"
+                echo "    Target: $INTERNAL_MPI_DIR/share/$d"
+                cp -r "$CONDA_PREFIX/share/$d" "$INTERNAL_MPI_DIR/share/"
+                echo "    ✅ Copied successfully"
+              else
+                echo "  - Share directory $d not found, skipping"
               fi
             done
+
+            # Verify critical files were copied
+            echo "🔍 Verifying critical MPI help files..."
+            HELP_FILE="$INTERNAL_MPI_DIR/share/prte/help-schizo-base.txt"
+            if [ -f "$HELP_FILE" ]; then
+              echo "✅ Found help-schizo-base.txt"
+            else
+              echo "❌ Missing help-schizo-base.txt - this will cause runtime errors!"
+              echo "📂 Contents of $INTERNAL_MPI_DIR/share/:"
+              ls -la "$INTERNAL_MPI_DIR/share/" || echo "Share directory not found"
+              exit 1
+            fi
 
             # ----------------------------------------------------------------------------
             # 🔧 Fix RPATHs so executables find bundled libs
