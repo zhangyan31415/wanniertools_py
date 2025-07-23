@@ -550,6 +550,25 @@ jobs:
             export OPAL_PKGDATADIR="$INTERNAL_MPI_DIR/share/openmpi"
             export OPAL_DATADIR="$INTERNAL_MPI_DIR/share"
             export LD_LIBRARY_PATH="$INTERNAL_MPI_DIR/lib:$LD_LIBRARY_PATH"
+
+            # 添加调试信息
+            echo "✅ Set bundled MPI environment variables: $INTERNAL_MPI_DIR"
+            echo "  PATH=$PATH"
+            echo "  OPAL_PKGDATADIR=$OPAL_PKGDATADIR"
+            echo "  OPAL_DATADIR=$OPAL_DATADIR"
+            echo "  OPAL_PREFIX=$OPAL_PREFIX"
+            echo "  LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+            echo "  which mpirun: $(which mpirun)"
+            echo "  which prterun: $(which prterun)"
+            echo "  which orterun: $(which orterun)"
+            echo "  which mpicc: $(which mpicc)"
+            echo "  which mpifort: $(which mpifort)"
+            
+            # 验证帮助文件是否存在
+            echo "🔍 Verifying help files:"
+            ls -l "$OPAL_PKGDATADIR/help-schizo-base.txt" || echo "Help file not found!"
+
+
             echo "✅ Set bundled MPI environment variables: $INTERNAL_MPI_DIR"
             echo "  PATH=$PATH"
             echo "  which mpirun: $(which mpirun)"
