@@ -53,14 +53,14 @@ Homepage = "https://www.wanniertools.com/"
 "Bug Tracker" = "https://github.com/quanshengwu/wannier_tools/issues"
 
 [tool.meson-python.args]
-install = ["--tags=python-runtime,extension,devel"] 
+install = ["--tags=python-runtime,extension,devel,runtime,data"] 
 
-[tool.setuptools.packages.find]
-where = ["src"]
-namespaces = true
+#[tool.setuptools.packages.find]
+#where = ["src"]
+#namespaces = true
 
-[tool.setuptools.package-data]
-"wannier_tools.internal_mpi" = ["**/*"]
+#[tool.setuptools.package-data]
+#"wannier_tools.internal_mpi" = ["**/*"]
 
 # cibuildwheel配置
 [tool.cibuildwheel]
