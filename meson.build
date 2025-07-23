@@ -273,30 +273,21 @@ else
 endif
 
 # Add MPI preprocessor definition if MPI is found
-        # For wheels/packaging builds, we use runtime MPI detection only
-        runtime_mpi_only = run_command('python', '-c', 'import os; print(os.environ.get("WANNIERTOOLS_RUNTIME_MPI_ONLY", "false"))', check: false).stdout().strip()
-        is_wheel_build = run_command('python', '-c', 'import os; print(os.environ.get("CIBUILDWHEEL", "false"))', check: false).stdout().strip()
+# For wheels/packaging builds, we use runtime MPI detection only
+is_wheel_build = run_command('python', '-c', 'import os; print(os.environ.get("CIBUILDWHEEL", "false"))', check: false).stdout().strip()
 
-        # Force runtime MPI detection only when explicitly requested
-        if runtime_mpi_only == 'true'
-          message('Building with runtime-only MPI detection (explicitly requested)')
-        elif host_machine.system() != 'windows'
-          # Only enable compile-time MPI on Linux and macOS
-          fortran_args += ['-DMPI']
-          if is_wheel_build == '1'
-            if host_machine.system() == 'linux'
-              message('Building wheel with compile-time MPI support (bundled MPICH for Linux)')
-            else
-              message('Building wheel with compile-time MPI support (bundled OpenMPI for macOS)')
-            endif
-          else
-            message('Building with compile-time MPI support')
-          endif
-elif host_machine.system() == 'windows'
-  message('Building with runtime-only MPI detection (Windows - not implemented yet)')
+# Enable MPI only on macOS
+if host_machine.system() == 'darwin'
+  fortran_args += ['-DMPI']
+  if is_wheel_build == '1'
+    message('Building wheel with compile-time MPI support for macOS')
+  else
+    message('Building with compile-time MPI support for macOS')
+  endif
 else
-  message('Building with runtime-only MPI detection (no MPI found)')
+  message('Building in serial mode for Linux/Windows')
 endif
+
 
 if build_machine.system() == 'windows' and fortran_compiler.get_id().startswith('intel')
   mpi_lib_dir = 'C:/Program Files (x86)/Intel/oneAPI/mpi/latest/lib/'

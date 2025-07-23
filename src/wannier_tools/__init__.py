@@ -12,21 +12,18 @@ import platform
 # ------------------------------------------------------------------
 
 def _inject_internal_mpi_libs():
-    sysname = platform.system().lower()
-    if sysname.startswith('linux'):
-        plat_dir = 'linux_x86_64'
-        lib_env = 'LD_LIBRARY_PATH'
-    elif sysname == 'darwin':
+    # Only inject MPI libraries on macOS where we bundle OpenMPI
+    if platform.system() == 'Darwin':
         plat_dir = 'macos_arm64'
         lib_env = 'DYLD_LIBRARY_PATH'
-    else:
-        return  # Windows: runtime_mpi, nothing to inject
-
-
-    pkg_root = Path(__file__).resolve().parent
-    mpi_lib_dir = pkg_root / 'internal_mpi' / plat_dir / 'lib'
-    if mpi_lib_dir.is_dir():
-        os.environ[lib_env] = f"{mpi_lib_dir}:{os.environ.get(lib_env,'')}"
+        
+        pkg_root = Path(__file__).resolve().parent
+        mpi_lib_dir = pkg_root / 'internal_mpi' / plat_dir / 'lib'
+        if mpi_lib_dir.is_dir():
+            os.environ[lib_env] = f"{mpi_lib_dir}:{os.environ.get(lib_env,'')}"
+        
+        # Suppress PMIx warning about missing compression library on macOS
+        os.environ['PMIX_MCA_pcompress_base_silence_warning'] = '1'
 
 
 _inject_internal_mpi_libs()
