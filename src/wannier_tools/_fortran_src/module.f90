@@ -12,14 +12,11 @@
   module wmpi
      use prec
 
-#if defined (MPI)
-     use mpi
-#endif
-
      integer :: cpuid  ! CPU id for mpi
      integer :: num_cpu  ! Number of processors for mpi
 
 #if defined (MPI)
+     include 'mpif.h'
      integer, parameter :: mpi_in= mpi_integer
      integer, parameter :: mpi_dp= mpi_double_precision
      integer, parameter :: mpi_dc= mpi_double_complex
