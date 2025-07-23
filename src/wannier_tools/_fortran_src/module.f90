@@ -11,6 +11,11 @@ module prec
      use prec
 #if defined (MPI)
      include 'mpif.h'
+     integer, parameter :: mpi_in = MPI_INTEGER
+     integer, parameter :: mpi_dp = MPI_DOUBLE_PRECISION
+     integer, parameter :: mpi_dc = MPI_DOUBLE_COMPLEX
+     integer, parameter :: mpi_sum = MPI_SUM
+     integer, parameter :: mpi_cmw = MPI_COMM_WORLD
 #endif
      integer :: cpuid  ! CPU id for mpi
      integer :: num_cpu  ! Number of processors for mpi
