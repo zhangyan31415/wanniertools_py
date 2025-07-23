@@ -126,8 +126,7 @@ jobs:
           CIBW_ENVIRONMENT_MACOS: ${{ matrix.cibw_archs == 'arm64' && format('MACOSX_DEPLOYMENT_TARGET={0}', env.MACOS_DEPLOYMENT_TARGET) || '' }}
           
           # Linux 编译环境设置
-          #CIBW_ENVIRONMENT_LINUX: 'PATH="$HOME/miniforge/envs/wt-build/bin:$PATH" FC=gfortran FFLAGS="-fallow-argument-mismatch -ffree-line-length-none" CPPFLAGS="-I$HOME/miniforge/envs/wt-build/include" LDFLAGS="-L$HOME/miniforge/envs/wt-build/lib -lmpi"'
-          CIBW_ENVIRONMENT_LINUX: 'PATH="$HOME/miniforge/envs/wt-build/bin:$PATH" FC=gfortran FFLAGS="-fallow-argument-mismatch -ffree-line-length-none" CPPFLAGS="-I$HOME/miniforge/envs/wt-build/include" LDFLAGS="-L$HOME/miniforge/envs/wt-build/lib -lmpi -Wl,-rpath,\$HOME/miniforge/envs/wt-build/lib" LD_LIBRARY_PATH="$HOME/miniforge/envs/wt-build/lib"'
+          CIBW_ENVIRONMENT_LINUX: 'PATH="$HOME/miniforge/envs/wt-build/bin:$PATH" FC=gfortran FFLAGS="-I$HOME/miniforge/envs/wt-build/include -fallow-argument-mismatch -ffree-line-length-none" CPPFLAGS="-I$HOME/miniforge/envs/wt-build/include" LDFLAGS="-L$HOME/miniforge/envs/wt-build/lib -lmpi -Wl,-rpath,$HOME/miniforge/envs/wt-build/lib" LD_LIBRARY_PATH="$HOME/miniforge/envs/wt-build/lib"'
 
           # Linux: 使用 Miniforge + conda-forge 打包 OpenMPI 运行时
           CIBW_BEFORE_BUILD_LINUX: |
