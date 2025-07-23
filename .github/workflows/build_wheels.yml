@@ -126,7 +126,7 @@ jobs:
           CIBW_ENVIRONMENT_MACOS: ${{ matrix.cibw_archs == 'arm64' && format('MACOSX_DEPLOYMENT_TARGET={0}', env.MACOS_DEPLOYMENT_TARGET) || '' }}
           
           # Linux 编译环境设置
-          CIBW_ENVIRONMENT_LINUX: 'PATH="$HOME/miniforge/envs/wt-build/bin:$PATH" FC=gfortran FFLAGS="-fallow-argument-mismatch -ffree-line-length-none"'
+          CIBW_ENVIRONMENT_LINUX: 'PATH="$HOME/miniforge/envs/wt-build/bin:$PATH" FC=mpifort FFLAGS="-fallow-argument-mismatch -ffree-line-length-none"'
  
           # Linux: 使用 Miniforge + conda-forge 打包 OpenMPI 运行时
           CIBW_BEFORE_BUILD_LINUX: |
@@ -160,6 +160,8 @@ jobs:
             echo "📋 Copying MPICH executables..."
             echo "  - Copying mpirun"
             cp -L $CONDA_PREFIX/bin/mpirun $INTERNAL_MPI_DIR/bin/
+            echo " file in conda_prefix: $CONDA_PREFIX/bin/mpirun"
+            ls -la $CONDA_PREFIX/bin/
             echo "  - Copying mpiexec"
             cp -L $CONDA_PREFIX/bin/mpiexec $INTERNAL_MPI_DIR/bin/
             if [ -f $CONDA_PREFIX/bin/hydra_pmi_proxy ]; then
