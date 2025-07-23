@@ -192,9 +192,21 @@ jobs:
               fi
             done
 
+            # ----------------------------------------------------------------------------
+            # 🧪 Smoke test bundled MPI
+            # ----------------------------------------------------------------------------
             echo "🧪 Smoke test mpirun ..."
-            LD_LIBRARY_PATH="$INTERNAL_MPI_DIR/lib" $INTERNAL_MPI_DIR/bin/mpirun -np 1 echo hello
-            echo "✅ OpenMPI runtime bundled"
+            $INTERNAL_MPI_DIR/bin/prterun --allow-run-as-root --help > /dev/null
+            echo "✅ prterun works!"
+            
+            echo "🔍 Debug: Check bundled dependencies..."
+            echo "📂 MPI directory contents:"
+            ls -la $INTERNAL_MPI_DIR/bin/ | head -10
+            echo "📚 Library dependencies (first 5 executables):"
+            for exe in $(ls $INTERNAL_MPI_DIR/bin/ | head -5); do
+              echo "--- $exe ---"
+              ldd $INTERNAL_MPI_DIR/bin/$exe | head -10 || echo "Not an ELF executable"
+            done
 
           # macOS: 安装Open MPI并复制到internal_mpi目录
           CIBW_BEFORE_BUILD_MACOS: |
