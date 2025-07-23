@@ -210,13 +210,27 @@ jobs:
             
             # Copy help files from /usr/share/openmpi3 (system OpenMPI3)
             mkdir -p $INTERNAL_MPI_DIR/share/openmpi
+            echo "🔍 Searching for OpenMPI help files..."
             for sharedir in /usr/lib64/openmpi3/share/openmpi /usr/share/openmpi3 /usr/share/openmpi /usr/local/share/openmpi /usr/lib/openmpi3/share/openmpi; do
+              echo "  - Checking: $sharedir"
               if [ -d "$sharedir" ]; then
+                echo "    ✅ Found directory: $sharedir"
+                ls -la "$sharedir" | head -10
                 cp -r "$sharedir"/* $INTERNAL_MPI_DIR/share/openmpi/ 2>/dev/null || true
-                echo "✅ Copied OpenMPI help files from $sharedir"
+                echo "    ✅ Copied OpenMPI help files from $sharedir"
                 break
+              else
+                echo "    ❌ Not found: $sharedir"
               fi
             done
+            
+            # Check what we actually copied
+            echo "📂 Contents of bundled share directory:"
+            if [ -d $INTERNAL_MPI_DIR/share/openmpi ]; then
+              ls -la $INTERNAL_MPI_DIR/share/openmpi/ | head -10
+            else
+              echo "  ❌ No share/openmpi directory created!"
+            fi
             
             # 如果还是没找到帮助文件，尝试从系统的 /usr/share/openmpi* 复制
             if [ ! -f $INTERNAL_MPI_DIR/share/openmpi/help-opal-runtime.txt ]; then
