@@ -46,9 +46,10 @@ def run(input_file="wt.in", output_file=None):
     """
     # Check if we're running under MPI by looking at environment variables
     # This works without requiring mpi4py
-    mpi_rank = os.environ.get('OMPI_COMM_WORLD_RANK')  # OpenMPI
+    # Check both MPICH (Linux) and OpenMPI (macOS) environment variables
+    mpi_rank = os.environ.get('PMI_RANK')  # MPICH (Linux), Intel MPI
     if mpi_rank is None:
-        mpi_rank = os.environ.get('PMI_RANK')  # Intel MPI, MPICH
+        mpi_rank = os.environ.get('OMPI_COMM_WORLD_RANK')  # OpenMPI (macOS)
     if mpi_rank is None:
         mpi_rank = os.environ.get('SLURM_PROCID')  # SLURM
     
@@ -110,9 +111,9 @@ def run(input_file="wt.in", output_file=None):
                 print("\nTo fix this issue:")
                 print("📦 Install MPI:")
                 print("   macOS:        brew install open-mpi")
-                print("   Ubuntu:       sudo apt install libopenmpi-dev")
-                print("   CentOS/RHEL:  sudo yum install openmpi-devel")
-                print("   Conda:        conda install openmpi")
+                print("   Ubuntu:       sudo apt install libmpich-dev")
+                print("   CentOS/RHEL:  sudo yum install mpich-devel")
+                print("   Conda:        conda install mpich (Linux) or openmpi (macOS)")
                 print("\n🚀 For parallel execution, use:")
                 print("   mpirun -np <N> wt-py")
                 print("   (where <N> is the number of processes)")

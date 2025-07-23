@@ -102,13 +102,8 @@ Note: For parallel computation, make sure MPI is installed:
 
         # On Linux/macOS, if an mpirun is found, use it
         if mpirun_exe is not None and sysname != 'windows':
-            
-            if plat_dir and mpirun_exe.endswith(f'internal_mpi/{plat_dir}/bin/mpirun'):
-                mpi_root = pkg_root / 'internal_mpi' / plat_dir
-            else:
-                raise RuntimeError(f"No mpirun found in {mpirun_exe}")
                 
-            new_cmd = [mpirun_exe, '--prefix', str(mpi_root),'-np', str(args.np), sys.executable, '-m', 'wannier_tools.cli', '--no-spawn']
+            new_cmd = [mpirun_exe, '-np', str(args.np), sys.executable, '-m', 'wannier_tools.cli', '--no-spawn']
 
             # propagate user-visible CLI args (except -n/--np)
             for flag, val in (('-i', args.input), ('-o', args.output)):

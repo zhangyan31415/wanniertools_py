@@ -47,7 +47,7 @@ contains
         character(len=256) :: env_var
         integer :: status
         
-        ! Check for common MPI environment variables
+        ! Check for common MPI environment variables (MPICH on Linux, OpenMPI on macOS)
         call get_environment_variable('PMI_RANK', env_var, status)
         if (len_trim(env_var) > 0) then
             mpi_available = .true.
@@ -140,7 +140,7 @@ contains
         character(len=32) :: rank_str
         integer :: status
         
-        ! Try different MPI implementation environment variables
+        ! Try different MPI implementation environment variables (MPICH/OpenMPI)
         call get_environment_variable('PMI_RANK', rank_str, status)
         if (len_trim(rank_str) > 0) then
             read(rank_str, *, iostat=status) cpuid
@@ -176,7 +176,7 @@ contains
         character(len=32) :: size_str
         integer :: status
         
-        ! Try different MPI implementation environment variables
+        ! Try different MPI implementation environment variables (MPICH/OpenMPI)
         call get_environment_variable('PMI_SIZE', size_str, status)
         if (len_trim(size_str) > 0) then
             read(size_str, *, iostat=status) num_cpu
@@ -215,7 +215,7 @@ contains
         if (.not. mpi_initialized) return
         
         ! If MPI was successfully initialized, rank should already be set
-        ! But try environment variables as fallback
+        ! But try environment variables as fallback (MPICH/OpenMPI)
         if (cpuid == 0) then
             call get_environment_variable('PMI_RANK', rank_str, status)
             if (status == 0) then
@@ -241,7 +241,7 @@ contains
         if (.not. mpi_initialized) return
         
         ! If MPI was successfully initialized, size should already be set
-        ! But try environment variables as fallback
+        ! But try environment variables as fallback (MPICH/OpenMPI)
         if (num_cpu == 1) then
             call get_environment_variable('PMI_SIZE', size_str, status)
             if (status == 0) then

@@ -143,10 +143,10 @@ jobs:
             eval "$( $HOME/miniforge/bin/conda shell.bash hook )"
             conda config --set channel_priority strict
 
-            echo "🛠️  Creating wt-build env with OpenMPI & compilers ..."
+            echo "🛠️  Creating wt-build env with MPICH & compilers ..."
             conda create -y -n wt-build python=3.9 \
               gcc_linux-64 gxx_linux-64 gfortran_linux-64 \
-              'openmpi=5.0.0' meson ninja numpy openblas arpack patchelf
+              'mpich' meson ninja numpy openblas arpack patchelf
 
             conda activate wt-build
             echo "✅ conda env ready at $CONDA_PREFIX"
@@ -157,23 +157,21 @@ jobs:
             INTERNAL_MPI_DIR="src/wannier_tools/internal_mpi/linux_x86_64"
             mkdir -p $INTERNAL_MPI_DIR/{bin,lib,share}
 
-            echo "📋 Copying OpenMPI executables..."
+            echo "📋 Copying MPICH executables..."
             echo "  - Copying mpirun"
             cp -L $CONDA_PREFIX/bin/mpirun $INTERNAL_MPI_DIR/bin/
-            if [ -f $CONDA_PREFIX/bin/prterun ]; then
-              echo "  - Copying prterun"
-              cp -L $CONDA_PREFIX/bin/prterun $INTERNAL_MPI_DIR/bin/
-            fi
-            if [ -f $CONDA_PREFIX/bin/orterun ]; then
-              echo "  - Copying orterun"
-              cp -L $CONDA_PREFIX/bin/orterun $INTERNAL_MPI_DIR/bin/
+            echo "  - Copying mpiexec"
+            cp -L $CONDA_PREFIX/bin/mpiexec $INTERNAL_MPI_DIR/bin/
+            if [ -f $CONDA_PREFIX/bin/hydra_pmi_proxy ]; then
+              echo "  - Copying hydra_pmi_proxy"
+              cp -L $CONDA_PREFIX/bin/hydra_pmi_proxy $INTERNAL_MPI_DIR/bin/
             fi
 
-            echo "📋 Copying OpenMPI libraries..."
+            echo "📋 Copying MPICH libraries..."
             cp -L $CONDA_PREFIX/lib/lib*.so* $INTERNAL_MPI_DIR/lib/
 
-            echo "📋 Copying OpenMPI share files (help files)..."
-            for d in openmpi prte pmix; do
+            echo "📋 Copying MPICH share files..."
+            for d in mpich doc; do
               if [ -d "$CONDA_PREFIX/share/$d" ]; then
                 echo "  - Copying share/$d"
                 echo "    Source: $CONDA_PREFIX/share/$d"
@@ -186,24 +184,21 @@ jobs:
               fi
             done
             
-            echo "📋 Copying OpenMPI plugins..."
-            mkdir -p $INTERNAL_MPI_DIR/lib/openmpi
-            cp -r $CONDA_PREFIX/lib/openmpi/* $INTERNAL_MPI_DIR/lib/openmpi/
-
-            echo "📋 Copying OpenMPI config files..."
-            mkdir -p $INTERNAL_MPI_DIR/etc/openmpi
-            cp $CONDA_PREFIX/etc/openmpi/* $INTERNAL_MPI_DIR/etc/openmpi/ 2>/dev/null || true
+            echo "📋 Copying MPICH config files..."
+            if [ -d "$CONDA_PREFIX/etc" ]; then
+              mkdir -p $INTERNAL_MPI_DIR/etc
+              cp -r $CONDA_PREFIX/etc/* $INTERNAL_MPI_DIR/etc/ 2>/dev/null || true
+            fi
 
 
             # Verify critical files were copied
-            echo "🔍 Verifying critical MPI help files..."
-            HELP_FILE="$INTERNAL_MPI_DIR/share/prte/help-schizo-base.txt"
-            if [ -f "$HELP_FILE" ]; then
-              echo "✅ Found help-schizo-base.txt"
+            echo "🔍 Verifying critical MPICH files..."
+            if [ -f "$INTERNAL_MPI_DIR/bin/mpirun" ] && [ -f "$INTERNAL_MPI_DIR/bin/mpiexec" ]; then
+              echo "✅ Found MPICH executables (mpirun, mpiexec)"
             else
-              echo "❌ Missing help-schizo-base.txt - this will cause runtime errors!"
-              echo "📂 Contents of $INTERNAL_MPI_DIR/share/:"
-              ls -lRa "$INTERNAL_MPI_DIR/share/" || echo "Share directory not found"
+              echo "❌ Missing MPICH executables - this will cause runtime errors!"
+              echo "📂 Contents of $INTERNAL_MPI_DIR/bin/:"
+              ls -la "$INTERNAL_MPI_DIR/bin/" || echo "Bin directory not found"
               # exit 1
             fi
 
@@ -229,9 +224,9 @@ jobs:
             # ----------------------------------------------------------------------------
             # 🧪 Smoke test bundled MPI
             # ----------------------------------------------------------------------------
-            echo "🧪 Smoke test mpirun ..."
-            $INTERNAL_MPI_DIR/bin/prterun --allow-run-as-root --help > /dev/null
-            echo "✅ prterun works!"
+            echo "🧪 Smoke test MPICH ..."
+            $INTERNAL_MPI_DIR/bin/mpiexec --help > /dev/null
+            echo "✅ mpiexec works!"
             
             echo "🔍 Debug: Check bundled dependencies..."
             echo "📂 MPI directory contents:"
@@ -376,7 +371,7 @@ jobs:
               # Create internal_mpi directory structure
               mkdir -p wannier_tools/internal_mpi/linux_x86_64/{bin,lib,share}
               
-              # Copy Open MPI files from the build context (they should be in the container)
+              # Copy MPICH files from the build context (they should be in the container)
               # The files were copied during CIBW_BEFORE_BUILD_LINUX
               if [ -d "/project/src/wannier_tools/internal_mpi/linux_x86_64/bin" ]; then
                 cp /project/src/wannier_tools/internal_mpi/linux_x86_64/bin/* wannier_tools/internal_mpi/linux_x86_64/bin/ 2>/dev/null || echo "No bin files to copy"
@@ -389,10 +384,10 @@ jobs:
                 cp -r /project/src/wannier_tools/internal_mpi/linux_x86_64/share/* wannier_tools/internal_mpi/linux_x86_64/share/ 2>/dev/null || true
               fi
 
-              mkdir -p wannier_tools/internal_mpi/linux_x86_64/lib/openmpi
-              cp -r /project/src/wannier_tools/internal_mpi/linux_x86_64/lib/openmpi/* wannier_tools/internal_mpi/linux_x86_64/lib/openmpi/ 2>/dev/null || true
-              mkdir -p wannier_tools/internal_mpi/linux_x86_64/etc/openmpi
-              cp /project/src/wannier_tools/internal_mpi/linux_x86_64/etc/openmpi/* wannier_tools/internal_mpi/linux_x86_64/etc/openmpi/ 2>/dev/null || true
+              if [ -d "/project/src/wannier_tools/internal_mpi/linux_x86_64/etc" ]; then
+                mkdir -p wannier_tools/internal_mpi/linux_x86_64/etc
+                cp -r /project/src/wannier_tools/internal_mpi/linux_x86_64/etc/* wannier_tools/internal_mpi/linux_x86_64/etc/ 2>/dev/null || true
+              fi
 
               # Show what we copied
               echo "Contents of internal_mpi:"
@@ -402,7 +397,7 @@ jobs:
               zip -r "$OLDPWD/$repaired_wheel" .
               cd ..
               rm -rf "$temp_dir"
-              echo "✅ Open MPI files added to $repaired_wheel"
+              echo "✅ MPICH files added to $repaired_wheel"
             else
               echo "❌ No repaired wheel found in {dest_dir}"
               echo "Available files:"
@@ -545,7 +540,7 @@ jobs:
       
       - name: Test MPI functionality (Linux)
         run: |
-          echo "🚀 Testing MPI functionality with bundled OpenMPI"
+          echo "🚀 Testing MPI functionality with bundled MPICH"
           
           cd examples/Haldane_model
           echo "=== 测试单核运行 ==="
@@ -560,41 +555,21 @@ jobs:
           if [ -n "$INTERNAL_MPI_DIR" ] && [ -d "$INTERNAL_MPI_DIR" ]; then
             # IMPORTANT: Prepend bundled bin to PATH to ensure our mpirun is used
             export PATH="$INTERNAL_MPI_DIR/bin:$PATH"
-            export OPAL_PREFIX="$INTERNAL_MPI_DIR"
-            export OPAL_PKGDATADIR="$INTERNAL_MPI_DIR/share/openmpi"
-            export OPAL_DATADIR="$INTERNAL_MPI_DIR/share"
             export LD_LIBRARY_PATH="$INTERNAL_MPI_DIR/lib:$LD_LIBRARY_PATH"
-
-            export OMPI_MCA_opal_common_accelerator_priority=0
-            export OMPI_MCA_opal_accelerator_priority=0
-            export OMPI_MCA_shmem=posix  # 强制使用 POSIX 共享内存
-            export OMPI_MCA_btl=self,tcp  # 限制通信方式
-
-            $OPAL_PREFIX/bin/ompi_info --all | grep -E "shmem|accelerator|MCA" || true
-            ldd $OPAL_PREFIX/bin/mpirun
+            
+            # MPICH specific environment variables
+            export MPICH_ROOT="$INTERNAL_MPI_DIR"
 
 
             # 添加调试信息
-            echo "✅ Set bundled MPI environment variables: $INTERNAL_MPI_DIR"
+            echo "✅ Set bundled MPICH environment variables: $INTERNAL_MPI_DIR"
             echo "  PATH=$PATH"
-            echo "  OPAL_PKGDATADIR=$OPAL_PKGDATADIR"
-            echo "  OPAL_DATADIR=$OPAL_DATADIR"
-            echo "  OPAL_PREFIX=$OPAL_PREFIX"
+            echo "  MPICH_ROOT=$MPICH_ROOT"
             echo "  LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
             echo "  which mpirun: $(which mpirun)"
-            echo "  which prterun: $(which prterun)"
-            echo "  which orterun: $(which orterun)"
+            echo "  which mpiexec: $(which mpiexec)"
             echo "  which mpicc: $(which mpicc)"
             echo "  which mpifort: $(which mpifort)"
-            
-            # 验证帮助文件是否存在
-            echo "🔍 Verifying help files:"
-            ls -l "$OPAL_PKGDATADIR/prte/help-schizo-base.txt" || echo "Help file not found!"
-
-
-            echo "✅ Set bundled MPI environment variables: $INTERNAL_MPI_DIR"
-            echo "  PATH=$PATH"
-            echo "  which mpirun: $(which mpirun)"
           else
             echo "⚠️ Bundled MPI directory not found, using system MPI"
           fi
@@ -602,10 +577,7 @@ jobs:
           # 强化错误检测 - 单核测试
           # 使用 mpirun 启动单核任务（compile-time MPI 需要 MPI 环境）
 
-          export OMPI_MCA_opal_debug=1
-          # 检查 MPI 是否能运行简单命令
-          mpirun -np 1 hostname
-          ldd $INTERNAL_MPI_DIR/bin/mpirun
+
 
           set +e
           wt_output=$(timeout 60 wt-py 2>&1)

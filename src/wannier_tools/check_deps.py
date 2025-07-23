@@ -135,9 +135,9 @@ def check_mpi():
         print("[WARN] MPI not found - parallel computation will not work")
         print("    For parallel execution, please install an MPI implementation:")
         print("    - macOS: brew install open-mpi")
-        print("    - Ubuntu/Debian: sudo apt install libopenmpi-dev")
-        print("    - CentOS/RHEL: sudo yum install openmpi-devel")
-        print("    - Conda: conda install openmpi")
+        print("    - Ubuntu/Debian: sudo apt install libmpich-dev")
+        print("    - CentOS/RHEL: sudo yum install mpich-devel")
+        print("    - Conda: conda install mpich (Linux) or openmpi (macOS)")
     else:
         print("[INFO] MPI detected - ready for parallel computation:")
         print("    - Single-core: wt-py")
@@ -267,12 +267,13 @@ def print_installation_instructions():
     print("# macOS")
     print("brew install open-mpi")
     print("# Ubuntu/Debian")  
-    print("sudo apt install libopenmpi-dev")
+    print("sudo apt install libmpich-dev")
     print("# CentOS/RHEL/Fedora")
-    print("sudo yum install openmpi-devel")
-    print("# or: sudo dnf install openmpi-devel")
+    print("sudo yum install mpich-devel")
+    print("# or: sudo dnf install mpich-devel")
     print("# Conda/Mamba")
-    print("conda install openmpi")
+    print("conda install mpich        # For Linux")
+    print("conda install openmpi      # For macOS")
 
 def main():
     """Main dependency checking function"""
