@@ -275,7 +275,7 @@ jobs:
             fi
 
             if [ -d "$(brew --prefix)/share/pmix" ]; then
-              # cp -rL $(brew --prefix)/share/pmix src/wannier_tools/internal_mpi/macos_arm64/share/ 2>/dev/null #|| true
+              cp -rL $(brew --prefix)/share/pmix src/wannier_tools/internal_mpi/macos_arm64/share/ 2>/dev/null #|| true
               echo "✅ pmix share files copied"
             fi
             
