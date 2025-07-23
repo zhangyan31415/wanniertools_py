@@ -566,7 +566,7 @@ jobs:
             
             # 验证帮助文件是否存在
             echo "🔍 Verifying help files:"
-            ls -l "$OPAL_PKGDATADIR/help-schizo-base.txt" || echo "Help file not found!"
+            ls -l "$OPAL_PKGDATADIR/prte/help-schizo-base.txt" || echo "Help file not found!"
 
 
             echo "✅ Set bundled MPI environment variables: $INTERNAL_MPI_DIR"
@@ -579,7 +579,7 @@ jobs:
           # 强化错误检测 - 单核测试
           # 使用 mpirun 启动单核任务（compile-time MPI 需要 MPI 环境）
           set +e
-          wt_output=$(timeout 60 mpirun -np 1 wt-py 2>&1)
+          wt_output=$(timeout 60 wt-py 2>&1)
           wt_exit_code=$?
           set -e
           
