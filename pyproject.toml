@@ -59,7 +59,6 @@ install = ["--tags=python-runtime,extension,devel"]
 where = ["src"]
 namespaces = true
 
-
 [tool.setuptools.package-data]
 "wannier_tools.internal_mpi" = ["**/*"]
 
