@@ -126,217 +126,87 @@ jobs:
           CIBW_ENVIRONMENT_MACOS: ${{ matrix.cibw_archs == 'arm64' && format('MACOSX_DEPLOYMENT_TARGET={0}', env.MACOS_DEPLOYMENT_TARGET) || '' }}
           
           # Linux 编译环境设置
-          CIBW_ENVIRONMENT_LINUX: 'PATH="/usr/lib64/openmpi3/bin:/usr/local/bin:$PATH" FC=mpif90 FFLAGS="-fallow-argument-mismatch -ffree-line-length-none"'
+          CIBW_ENVIRONMENT_LINUX: 'PATH="/opt/openmpi/bin:/usr/local/bin:$PATH" FC=mpifort FFLAGS="-fallow-argument-mismatch -ffree-line-length-none"'
           
           # Linux: 安装Open MPI并复制到internal_mpi目录
           CIBW_BEFORE_BUILD_LINUX: |
+            set -e
             echo "📦 Installing build dependencies for Linux..."
-            yum install -y openmpi3 openmpi3-devel hwloc-devel libevent-devel patchelf
+            # manylinux images already have gcc/g++/gfortran, make, etc.
+            yum install -y wget hwloc-devel libevent-devel numactl-devel patchelf
             echo "✅ Dependencies installed"
 
-            # --- Configure MPI environment ---
-            # Load OpenMPI3 module (required for CentOS/RHEL)
-            source /etc/profile.d/modules.sh
-            module load mpi/openmpi3-x86_64
-            echo "✅ OpenMPI3 module loaded"
-            
-            # Check available MPI compilers and launchers
-            echo "🔍 Available MPI compilers and launchers:"
-            ls -la /usr/lib64/openmpi3/bin/ | grep -E "(mpi|orte|prte)" || true
-            echo "🔍 Check mpirun type:"
-            file /usr/lib64/openmpi3/bin/mpirun || true
-            echo "🔍 Check if mpirun is symlink:"
-            readlink -f /usr/lib64/openmpi3/bin/mpirun || echo "Not a symlink"
+            # ----------------------------------------------------------------------------
+            # 🛠️ Build OpenMPI 5 from source (static-less, shared libs only)
+            # ----------------------------------------------------------------------------
+            export OPENMPI_VER="5.0.2"
+            export OPENMPI_PREFIX="/opt/openmpi"
+            echo "⬇️  Downloading OpenMPI ${OPENMPI_VER} ..."
+            wget -q https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-${OPENMPI_VER}.tar.gz
+            tar -xf openmpi-${OPENMPI_VER}.tar.gz
+            cd openmpi-${OPENMPI_VER}
+            echo "⚙️  Configuring OpenMPI ..."
+            ./configure \
+              --prefix=${OPENMPI_PREFIX} \
+              --disable-static \
+              --enable-mpirun-prefix-by-default \
+              --with-internal-hwloc \
+              --with-internal-libevent \
+              --disable-mpi-java \
+              --disable-oshmem \
+              --disable-oshmem-fortran || { cat config.log; exit 1; }
+            echo "🛠️  Building OpenMPI (parallel) ..."
+            make -j$(nproc)
+            echo "📦 Installing OpenMPI to ${OPENMPI_PREFIX} ..."
+            make install
+            cd ..
+            rm -rf openmpi-${OPENMPI_VER} openmpi-${OPENMPI_VER}.tar.gz
+            echo "✅ OpenMPI ${OPENMPI_VER} installed to ${OPENMPI_PREFIX}"
 
-            echo "🔍 In-depth check of system MPI launchers:"
-            for exe in mpirun orterun prterun; do
-              path="/usr/lib64/openmpi3/bin/$exe"
-              if [ -e "$path" ]; then
-                echo "--- Details for $exe ---"
-                echo "Path: $path"
-                ls -la "$path"
-                echo "File type: $(file "$path")"
-                if [ -L "$path" ]; then
-                  echo "Symlink target: $(readlink -f "$path")"
-                fi
-                echo "Version output:"
-                "$path" --version 2>&1 | head -n 5 || echo "--> Version check failed"
-              else
-                echo "--- $exe not found ---"
-              fi
-            done
-            
-            # Create mpifort symlink if it doesn't exist (older OpenMPI versions)
-            if [ ! -f /usr/lib64/openmpi3/bin/mpifort ] && [ -f /usr/lib64/openmpi3/bin/mpif90 ]; then
-              ln -s /usr/lib64/openmpi3/bin/mpif90 /usr/lib64/openmpi3/bin/mpifort
-              echo "🔗 Created mpifort -> mpif90 symlink"
-            fi
-            
-            # Also create in /usr/local/bin for easier access
-            if [ ! -f /usr/local/bin/mpifort ]; then
-              if [ -f /usr/lib64/openmpi3/bin/mpifort ]; then
-                ln -s /usr/lib64/openmpi3/bin/mpifort /usr/local/bin/mpifort
-              elif [ -f /usr/lib64/openmpi3/bin/mpif90 ]; then
-                ln -s /usr/lib64/openmpi3/bin/mpif90 /usr/local/bin/mpifort
-              fi
-              echo "🔗 Created /usr/local/bin/mpifort symlink"
-            fi
-            
-            # Verify mpifort is available
-            which mpifort || echo "❌ mpifort still not found"
-            mpifort --version || echo "❌ mpifort version check failed"
-            
-            # --- Copy MPI runtime files ---
-            echo "📋 Copying Open MPI runtime files..."
+            # Add OpenMPI to PATH for subsequent build steps
+            export PATH="${OPENMPI_PREFIX}/bin:$PATH"
+            echo "PATH=${OPENMPI_PREFIX}/bin:$PATH" >> $GITHUB_ENV
+            echo "LD_LIBRARY_PATH=${OPENMPI_PREFIX}/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+            # Verify mpirun works
+            echo "🔍 OpenMPI version:"; mpirun --version
+            echo "🔍 mpifort version:"; mpifort --version || true
+
+            # ----------------------------------------------------------------------------
+            # 🗄️  Bundle OpenMPI runtime into package directory
+            # ----------------------------------------------------------------------------
             INTERNAL_MPI_DIR="src/wannier_tools/internal_mpi/linux_x86_64"
             mkdir -p $INTERNAL_MPI_DIR/{bin,lib,share}
+            echo "📋 Copying OpenMPI executables..."
+            cp -L ${OPENMPI_PREFIX}/bin/{mpirun,prterun,orterun} $INTERNAL_MPI_DIR/bin/
+            # ensure mpifort for compile-time detection is visible via PATH already
 
-            # Copy executables from /usr/lib64/openmpi3/bin (system OpenMPI3)
-            # Use -L to follow symlinks and copy the actual executable
-            echo "📋 Copying MPI executables..."
-            if [ -f /usr/lib64/openmpi3/bin/mpirun ]; then
-              echo "  - Copying mpirun (following symlinks)"
-              cp -L /usr/lib64/openmpi3/bin/mpirun $INTERNAL_MPI_DIR/bin/ 2>/dev/null || true
-            fi
-            if [ -f /usr/lib64/openmpi3/bin/orterun ]; then
-              echo "  - Copying orterun"
-              cp -L /usr/lib64/openmpi3/bin/orterun $INTERNAL_MPI_DIR/bin/ 2>/dev/null || true
-            fi
-            # Copy mpifort or mpif90
-            if [ -f /usr/lib64/openmpi3/bin/mpifort ]; then
-              cp -L /usr/lib64/openmpi3/bin/mpifort $INTERNAL_MPI_DIR/bin/
-            elif [ -f /usr/lib64/openmpi3/bin/mpif90 ]; then
-              cp -L /usr/lib64/openmpi3/bin/mpif90 $INTERNAL_MPI_DIR/bin/
-              ln -s mpif90 $INTERNAL_MPI_DIR/bin/mpifort
-            fi
-            # Create prterun symlink if it doesn't exist (older OpenMPI)
-            if [ ! -f $INTERNAL_MPI_DIR/bin/prterun ] && [ -f $INTERNAL_MPI_DIR/bin/orterun ]; then
-              ln -s orterun $INTERNAL_MPI_DIR/bin/prterun
-              echo "🔗 Created prterun -> orterun symlink"
-            fi
-            
-            # Copy libraries from /usr/lib64/openmpi3/lib (system OpenMPI3)
-            echo "📦 Copying MPI libraries..."
-            for libdir in /usr/lib64/openmpi3/lib /usr/lib/openmpi3/lib /usr/lib64 /usr/lib/x86_64-linux-gnu; do
-              if [ -d "$libdir" ]; then
-                echo "🔍 Checking $libdir for MPI libraries..."
-                # MPI 核心库
-                find "$libdir" -name "libmpi.so*"      -exec cp {} $INTERNAL_MPI_DIR/lib/ \; 2>/dev/null || true
-                find "$libdir" -name "libopen-rte.so*" -exec cp {} $INTERNAL_MPI_DIR/lib/ \; 2>/dev/null || true
-                find "$libdir" -name "libopen-pal.so*" -exec cp {} $INTERNAL_MPI_DIR/lib/ \; 2>/dev/null || true
-                
-                # 额外依赖
-                find "$libdir" -name "libhwloc.so*"   -exec cp {} $INTERNAL_MPI_DIR/lib/ \; 2>/dev/null || true
-                find "$libdir" -name "libevent*.so*"   -exec cp {} $INTERNAL_MPI_DIR/lib/ \; 2>/dev/null || true
-                find "$libdir" -name "libpmix.so*"     -exec cp {} $INTERNAL_MPI_DIR/lib/ \; 2>/dev/null || true
-                find "$libdir" -name "libprte.so*"     -exec cp {} $INTERNAL_MPI_DIR/lib/ \; 2>/dev/null || true
-                find "$libdir" -name "libprrte.so*"    -exec cp {} $INTERNAL_MPI_DIR/lib/ \; 2>/dev/null || true
-                # 系统库依赖
-                find "$libdir" -name "libnuma.so*"     -exec cp {} $INTERNAL_MPI_DIR/lib/ \; 2>/dev/null || true
-                # OpenMPI 的其他可能依赖
-                find "$libdir" -name "libopen-trace-format.so*" -exec cp {} $INTERNAL_MPI_DIR/lib/ \; 2>/dev/null || true
-                find "$libdir" -name "libmpi_*.so*"    -exec cp {} $INTERNAL_MPI_DIR/lib/ \; 2>/dev/null || true
-              fi
-            done
-            
-            # Copy help files from /usr/share/openmpi3 (system OpenMPI3)
-            mkdir -p $INTERNAL_MPI_DIR/share/openmpi
-            echo "🔍 Searching for OpenMPI help files..."
-            for sharedir in /usr/lib64/openmpi3/share/openmpi /usr/share/openmpi3 /usr/share/openmpi /usr/local/share/openmpi /usr/lib/openmpi3/share/openmpi; do
-              echo "  - Checking: $sharedir"
-              if [ -d "$sharedir" ]; then
-                echo "    ✅ Found directory: $sharedir"
-                ls -la "$sharedir" | head -10
-                cp -r "$sharedir"/* $INTERNAL_MPI_DIR/share/openmpi/ 2>/dev/null || true
-                echo "    ✅ Copied OpenMPI help files from $sharedir"
-                break
-              else
-                echo "    ❌ Not found: $sharedir"
-              fi
-            done
-            
-            # Check what we actually copied
-            echo "📂 Contents of bundled share directory:"
-            if [ -d $INTERNAL_MPI_DIR/share/openmpi ]; then
-              ls -la $INTERNAL_MPI_DIR/share/openmpi/ | head -10
-            else
-              echo "  ❌ No share/openmpi directory created!"
-            fi
-            
-            # 如果还是没找到帮助文件，尝试从系统的 /usr/share/openmpi* 复制
-            if [ ! -f $INTERNAL_MPI_DIR/share/openmpi/help-opal-runtime.txt ]; then
-              echo "🔍 Looking for help files in alternative locations..."
-              for alt_dir in /usr/share/openmpi /usr/share/openmpi3 /usr/local/share/openmpi; do
-                if [ -f "$alt_dir/help-opal-runtime.txt" ]; then
-                  cp -r "$alt_dir"/* $INTERNAL_MPI_DIR/share/openmpi/ 2>/dev/null || true
-                  echo "✅ Found help files in $alt_dir"
-                  break
-                fi
-              done
-            fi
-            echo "✅ MPI runtime files copied"
-            
-            # --- Fix RPATHs with patchelf ---
+            echo "📋 Copying OpenMPI libraries..."
+            cp -L ${OPENMPI_PREFIX}/lib/lib*.so* $INTERNAL_MPI_DIR/lib/
+
+            echo "📋 Copying OpenMPI share files (help files)..."
+            cp -r ${OPENMPI_PREFIX}/share/openmpi/* $INTERNAL_MPI_DIR/share/openmpi/
+
+            # ----------------------------------------------------------------------------
+            # 🛠️  Fix RPATHs in executables and libraries
+            # ----------------------------------------------------------------------------
             echo "🔧 Fixing RPATH for bundled MPI runtime..."
-            
-            # Fix executables' RPATH to point to their bundled libs
             for exe in $INTERNAL_MPI_DIR/bin/*; do
-              if [ -f "$exe" ] && [ ! -L "$exe" ]; then
-                echo "  - Fixing executable: $(basename $exe)"
-                # Remove existing RPATH and set new one
-                patchelf --remove-rpath "$exe" 2>/dev/null || true
-                patchelf --force-rpath --set-rpath '$ORIGIN/../lib' "$exe" || echo "    WARNING: patchelf failed for $exe"
-                echo "    New RPATH: $(patchelf --print-rpath "$exe" 2>/dev/null || echo 'failed to read')"
-              fi
+              [ -L "$exe" ] && continue
+              patchelf --remove-rpath "$exe" || true
+              patchelf --force-rpath --set-rpath '$ORIGIN/../lib' "$exe"
             done
-
-            # Fix libraries' RPATH to search their own directory
             for lib in $INTERNAL_MPI_DIR/lib/*.so*; do
-              # Don't run on symlinks, run on the actual files
-              if [ -f "$lib" ] && [ ! -L "$lib" ]; then
-                echo "  - Fixing library: $(basename $lib)"
-                # Remove existing RPATH and set new one
-                patchelf --remove-rpath "$lib" 2>/dev/null || true
-                patchelf --force-rpath --set-rpath '$ORIGIN' "$lib" || echo "    WARNING: patchelf failed for $lib"
-              fi
+              [ -L "$lib" ] && continue
+              patchelf --remove-rpath "$lib" || true
+              patchelf --force-rpath --set-rpath '$ORIGIN' "$lib"
             done
-            echo "✅ RPATH fixing complete"
-            
-            # --- Verify RPATH fixes worked ---
-            echo "🔍 Verifying RPATH fixes..."
-            echo "  prterun dependencies after RPATH fix:"
-            ldd $INTERNAL_MPI_DIR/bin/prterun | head -5 || echo "  ldd failed"
-            
-            # --- Debug output ---
-            echo "📂 Final content of bundled MPI directory:"
-            find $INTERNAL_MPI_DIR -maxdepth 3 -print
-            
-            # --- Test bundled MPI ---
-            echo "🧪 Testing bundled MPI executables..."
-            if [ -f $INTERNAL_MPI_DIR/bin/prterun ]; then
-              echo "✅ prterun located at $INTERNAL_MPI_DIR/bin/prterun"
-              echo "🔗 ldd output:"
-              ldd $INTERNAL_MPI_DIR/bin/prterun || echo "ldd failed"
-              echo "🚀 Testing MPI executables:"
-              # Set environment for bundled MPI
-              export OPAL_PREFIX="$PWD/$INTERNAL_MPI_DIR"
-              export OPAL_PKGDATADIR="$PWD/$INTERNAL_MPI_DIR/share/openmpi"
-              export OPAL_DATADIR="$PWD/$INTERNAL_MPI_DIR/share"
-              export LD_LIBRARY_PATH="$PWD/$INTERNAL_MPI_DIR/lib:$LD_LIBRARY_PATH"
-              
-              echo "  Testing prterun:"
-              $INTERNAL_MPI_DIR/bin/prterun --help 2>&1 | head -5 || echo "❌ prterun --help failed"
-              
-              if [ -f $INTERNAL_MPI_DIR/bin/mpirun ]; then
-                echo "  Testing mpirun -np option:"
-                $INTERNAL_MPI_DIR/bin/mpirun -np 1 echo "MPI test" 2>&1 || echo "❌ mpirun -np test failed"
-              else
-                echo "❌ mpirun not found in bundled directory"
-              fi
-            else
-              echo "⚠️ prterun not found!"
-            fi
-          
+            echo "✅ RPATH fixed"
+
+            # Quick sanity test
+            echo "🧪 Quick mpirun smoke test (internal)..."
+            LD_LIBRARY_PATH="$INTERNAL_MPI_DIR/lib" $INTERNAL_MPI_DIR/bin/mpirun -np 1 echo hello || echo "⚠️ mpirun smoke test failed"
+
           # macOS: 安装Open MPI并复制到internal_mpi目录
           CIBW_BEFORE_BUILD_MACOS: |
             echo "📦 Installing OpenMPI for macOS builds..."
