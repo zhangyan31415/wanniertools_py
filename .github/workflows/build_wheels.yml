@@ -146,7 +146,7 @@ jobs:
             echo "🛠️  Creating wt-build env with OpenMPI & compilers ..."
             conda create -y -n wt-build python=3.9 \
               gcc_linux-64 gxx_linux-64 gfortran_linux-64 \
-              'openmpi=5.0.0' meson ninja numpy openblas arpack patchelf
+              'openmpi=4.0.2' meson ninja numpy openblas arpack patchelf
 
             conda activate wt-build
             echo "✅ conda env ready at $CONDA_PREFIX"
