@@ -37,10 +37,6 @@
 
      use wmpi
      use para
-#if !defined (MPI)
-     use runtime_mpi, only: try_init_mpi, mpi_initialized, try_finalize_mpi
-     use runtime_mpi, only: runtime_cpuid => cpuid, runtime_num_cpu => num_cpu, runtime_ierr => ierr
-#endif
      implicit none
 
      !> file existence
@@ -68,15 +64,13 @@
         write(*, '(a)') ' >>> MPI: Using compile-time MPI support (true parallel)'
      endif
 #else
-     !> Try to initialize MPI at runtime (works with or without MPI environment)
-     call try_init_mpi()
-     ! Get MPI status from runtime_mpi module
-     cpuid = runtime_cpuid
-     num_cpu = runtime_num_cpu
-     ierr = runtime_ierr
+     !> Pure serial mode - no MPI operations
+     cpuid = 0
+     num_cpu = 1
+     ierr = 0
      if (cpuid==0) then
-        write(stdout, '(a)') ' >>> MPI: Using runtime MPI detection (file-based fallback)'
-        write(*, '(a)') ' >>> MPI: Using runtime MPI detection (file-based fallback)'
+        write(stdout, '(a)') ' >>> Serial mode: No MPI support (single-threaded)'
+        write(*, '(a)') ' >>> Serial mode: No MPI support (single-threaded)'
      endif
 #endif
 
@@ -808,8 +802,7 @@
 #if defined (MPI)
      call mpi_finalize(ierr)
 #else
-     ! Finalize MPI if it was initialized
-     call try_finalize_mpi()
+     ! Serial mode - no MPI finalization needed
 #endif
      deallocate(HmnR, stat=ierr)
      deallocate(SmnR, stat=ierr)
