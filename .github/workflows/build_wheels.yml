@@ -146,7 +146,7 @@ jobs:
             echo "🛠️  Creating wt-build env with OpenMPI & compilers ..."
             conda create -y -n wt-build python=3.9 \
               gcc_linux-64 gxx_linux-64 gfortran_linux-64 \
-              'openmpi=4.1.5' meson ninja numpy openblas arpack patchelf
+              'openmpi=5.0.0' meson ninja numpy openblas arpack patchelf
 
             conda activate wt-build
             echo "✅ conda env ready at $CONDA_PREFIX"
@@ -185,6 +185,15 @@ jobs:
                 echo "  - Share directory $d not found, skipping"
               fi
             done
+            
+            echo "📋 Copying OpenMPI plugins..."
+            mkdir -p $INTERNAL_MPI_DIR/lib/openmpi
+            cp -r $CONDA_PREFIX/lib/openmpi/* $INTERNAL_MPI_DIR/lib/openmpi/
+
+            echo "📋 Copying OpenMPI config files..."
+            mkdir -p $INTERNAL_MPI_DIR/etc/openmpi
+            cp $CONDA_PREFIX/etc/openmpi/* $INTERNAL_MPI_DIR/etc/openmpi/ 2>/dev/null || true
+
 
             # Verify critical files were copied
             echo "🔍 Verifying critical MPI help files..."
@@ -221,7 +230,7 @@ jobs:
             # 🧪 Smoke test bundled MPI
             # ----------------------------------------------------------------------------
             echo "🧪 Smoke test mpirun ..."
-            $INTERNAL_MPI_DIR/bin/orterun --allow-run-as-root --help > /dev/null
+            $INTERNAL_MPI_DIR/bin/prterun --allow-run-as-root --help > /dev/null
             echo "✅ prterun works!"
             
             echo "🔍 Debug: Check bundled dependencies..."
@@ -379,6 +388,11 @@ jobs:
               if [ -d "/project/src/wannier_tools/internal_mpi/linux_x86_64/share" ]; then
                 cp -r /project/src/wannier_tools/internal_mpi/linux_x86_64/share/* wannier_tools/internal_mpi/linux_x86_64/share/ 2>/dev/null || true
               fi
+
+              mkdir -p wannier_tools/internal_mpi/linux_x86_64/lib/openmpi
+              cp -r /project/src/wannier_tools/internal_mpi/linux_x86_64/lib/openmpi/* wannier_tools/internal_mpi/linux_x86_64/lib/openmpi/ 2>/dev/null || true
+              mkdir -p wannier_tools/internal_mpi/linux_x86_64/etc/openmpi
+              cp /project/src/wannier_tools/internal_mpi/linux_x86_64/etc/openmpi/* wannier_tools/internal_mpi/linux_x86_64/etc/openmpi/ 2>/dev/null || true
 
               # Show what we copied
               echo "Contents of internal_mpi:"
@@ -550,6 +564,15 @@ jobs:
             export OPAL_PKGDATADIR="$INTERNAL_MPI_DIR/share/openmpi"
             export OPAL_DATADIR="$INTERNAL_MPI_DIR/share"
             export LD_LIBRARY_PATH="$INTERNAL_MPI_DIR/lib:$LD_LIBRARY_PATH"
+
+            export OMPI_MCA_opal_common_accelerator_priority=0
+            export OMPI_MCA_opal_accelerator_priority=0
+            export OMPI_MCA_shmem=posix  # 强制使用 POSIX 共享内存
+            export OMPI_MCA_btl=self,tcp  # 限制通信方式
+
+            $OPAL_PREFIX/bin/ompi_info --all | grep -E "shmem|accelerator|MCA"
+            ldd $OPAL_PREFIX/bin/mpirun
+
 
             # 添加调试信息
             echo "✅ Set bundled MPI environment variables: $INTERNAL_MPI_DIR"
