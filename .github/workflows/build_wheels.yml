@@ -176,13 +176,20 @@ jobs:
             # ----------------------------------------------------------------------------
             # 🔧 Fix RPATHs so executables find bundled libs
             # ----------------------------------------------------------------------------
+            is_elf() { file "$1" | grep -q "ELF"; }
+
             for exe in $INTERNAL_MPI_DIR/bin/*; do
               [ -L "$exe" ] && continue
-              patchelf --force-rpath --set-rpath '$ORIGIN/../lib' "$exe"
+              if is_elf "$exe"; then
+                patchelf --force-rpath --set-rpath '$ORIGIN/../lib' "$exe"
+              fi
             done
+
             for lib in $INTERNAL_MPI_DIR/lib/*.so*; do
               [ -L "$lib" ] && continue
-              patchelf --force-rpath --set-rpath '$ORIGIN' "$lib"
+              if is_elf "$lib"; then
+                patchelf --force-rpath --set-rpath '$ORIGIN' "$lib"
+              fi
             done
 
             echo "🧪 Smoke test mpirun ..."
