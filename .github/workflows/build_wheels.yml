@@ -106,118 +106,8 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
       
-      - name: Prepare MPI environment (Linux)
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          set -e
-          echo "📦 Installing Miniforge (silent)..."
-          MINIFORGE=Miniforge3-Linux-x86_64.sh
-          curl -fsSL https://github.com/conda-forge/miniforge/releases/latest/download/$MINIFORGE -o $MINIFORGE
-          bash $MINIFORGE -b -p $HOME/miniforge
-          rm -f $MINIFORGE
-
-          # Initialize conda for bash
-          eval "$( $HOME/miniforge/bin/conda shell.bash hook )"
-          conda config --set channel_priority strict
-
-          echo "🛠️  Creating wt-build env with OpenMPI & compilers ..."
-          conda create -y -n wt-build python=3.12 \
-                        gcc_linux-64 gxx_linux-64 gfortran_linux-64 \
-                        'openmpi=5.0.0' mpi4py meson ninja numpy openblas arpack patchelf
-
-          conda activate wt-build
-          echo "✅ conda env ready at $CONDA_PREFIX"
-
-          # ----------------------------------------------------------------------------
-          # 🗄️  Bundle OpenMPI runtime into package directory
-          # ----------------------------------------------------------------------------
-          INTERNAL_MPI_DIR="src/wannier_tools/internal_mpi/linux_x86_64"
-          mkdir -p $INTERNAL_MPI_DIR/{bin,lib,share}
-
-          echo "📋 Copying OpenMPI executables..."
-          echo "  - Copying mpirun"
-          cp -L $CONDA_PREFIX/bin/mpirun $INTERNAL_MPI_DIR/bin/
-          if [ -f $CONDA_PREFIX/bin/prterun ]; then
-            echo "  - Copying prterun"
-            cp -L $CONDA_PREFIX/bin/prterun $INTERNAL_MPI_DIR/bin/
-          fi
-          if [ -f $CONDA_PREFIX/bin/orterun ]; then
-            echo "  - Copying orterun"
-            cp -L $CONDA_PREFIX/bin/orterun $INTERNAL_MPI_DIR/bin/
-          fi
-
-          echo "📋 Copying OpenMPI libraries..."
-          cp -L $CONDA_PREFIX/lib/lib*.so* $INTERNAL_MPI_DIR/lib/
-
-          echo "📋 Copying OpenMPI share files (help files)..."
-          cp -r $CONDA_PREFIX/share/openmpi $INTERNAL_MPI_DIR/share/
-
-          # ----------------------------------------------------------------------------
-          # 🔧 Fix RPATHs so executables find bundled libs
-          # ----------------------------------------------------------------------------
-          is_elf() { file "$1" | grep -q "ELF"; }
-
-          for exe in $INTERNAL_MPI_DIR/bin/*; do
-            [ -L "$exe" ] && continue
-            if is_elf "$exe"; then
-              patchelf --force-rpath --set-rpath '$ORIGIN/../lib' "$exe"
-            fi
-          done
-
-          for lib in $INTERNAL_MPI_DIR/lib/*.so*; do
-            [ -L "$lib" ] && continue
-            if is_elf "$lib"; then
-              patchelf --force-rpath --set-rpath '$ORIGIN' "$lib"
-            fi
-          done
-
-          # ----------------------------------------------------------------------------
-          # 🧪 Smoke test bundled MPI
-          # ----------------------------------------------------------------------------
-          echo "🧪 Smoke test mpirun ..."
-          $INTERNAL_MPI_DIR/bin/prterun --allow-run-as-root --help > /dev/null
-          echo "✅ prterun works!"
-          
-          echo "🔍 Debug: Check bundled dependencies..."
-          echo "📂 MPI directory contents:"
-          ls -la $INTERNAL_MPI_DIR/bin/ | head -10
-          echo "📚 Library dependencies (first 5 executables):"
-          for exe in $(ls $INTERNAL_MPI_DIR/bin/ | head -5); do
-            echo "--- $exe ---"
-            ldd $INTERNAL_MPI_DIR/bin/$exe | head -10 || echo "Not an ELF executable"
-          done
-
-      # macOS: 安装Open MPI并复制到internal_mpi目录
-      - name: Prepare MPI environment (macOS)
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          brew install open-mpi
-          INTERNAL_MPI_DIR="src/wannier_tools/internal_mpi/macos_arm64"
-          mkdir -p $INTERNAL_MPI_DIR/{bin,lib,share}
-          
-          echo "📋 Copying executables..."
-          cp $(brew --prefix open-mpi)/bin/mpirun $INTERNAL_MPI_DIR/bin/
-          cp $(brew --prefix open-mpi)/bin/prterun $INTERNAL_MPI_DIR/bin/
-          
-          echo "📋 Copying libraries..."
-          cp -L $(brew --prefix open-mpi)/lib/libmpi.40.dylib $INTERNAL_MPI_DIR/lib/
-          
-          echo "📋 Copying share files..."
-          cp -r $(brew --prefix open-mpi)/share/openmpi $INTERNAL_MPI_DIR/share/
-          
-          echo "🔍 Debug: Check bundled dependencies..."
-          otool -L $INTERNAL_MPI_DIR/bin/mpirun
-          otool -L $INTERNAL_MPI_DIR/lib/libmpi.40.dylib
-          
-      # Windows: 无需特殊操作，使用runtime_mpi
-      - name: Prepare MPI environment (Windows)
-        if: runner.os == 'Windows'
-        run: echo "Windows will use file-based runtime_mpi. No bundling needed."
-      
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.21.1
+        uses: pypa/cibuildwheel@v2.21.3
         with:
           output-dir: wheelhouse
         env:
@@ -286,8 +176,185 @@ jobs:
             # ----------------------------------------------------------------------------
             # 🔧 Fix RPATHs so executables find bundled libs
             # ----------------------------------------------------------------------------
-            LD_LIBRARY_PATH="$INTERNAL_MPI_DIR/lib" $INTERNAL_MPI_DIR/bin/mpirun -np 1 echo hello
-            echo "✅ OpenMPI runtime bundled"
+            is_elf() { file "$1" | grep -q "ELF"; }
+
+            for exe in $INTERNAL_MPI_DIR/bin/*; do
+              [ -L "$exe" ] && continue
+              if is_elf "$exe"; then
+                patchelf --force-rpath --set-rpath '$ORIGIN/../lib' "$exe"
+              fi
+            done
+
+            for lib in $INTERNAL_MPI_DIR/lib/*.so*; do
+              [ -L "$lib" ] && continue
+              if is_elf "$lib"; then
+                patchelf --force-rpath --set-rpath '$ORIGIN' "$lib"
+              fi
+            done
+
+            # ----------------------------------------------------------------------------
+            # 🧪 Smoke test bundled MPI
+            # ----------------------------------------------------------------------------
+            echo "🧪 Smoke test mpirun ..."
+            $INTERNAL_MPI_DIR/bin/prterun --allow-run-as-root --help > /dev/null
+            echo "✅ prterun works!"
+            
+            echo "🔍 Debug: Check bundled dependencies..."
+            echo "📂 MPI directory contents:"
+            ls -la $INTERNAL_MPI_DIR/bin/ | head -10
+            echo "📚 Library dependencies (first 5 executables):"
+            for exe in $(ls $INTERNAL_MPI_DIR/bin/ | head -5); do
+              echo "--- $exe ---"
+              ldd $INTERNAL_MPI_DIR/bin/$exe | head -10 || echo "Not an ELF executable"
+            done
+
+          # macOS: 安装Open MPI并复制到internal_mpi目录
+          CIBW_BEFORE_BUILD_MACOS: |
+            echo "📦 Installing OpenMPI for macOS builds..."
+            brew install gcc openblas arpack open-mpi hwloc
+            echo "🎯 Building for ARM64 with deployment target ${{ env.MACOS_DEPLOYMENT_TARGET }}"
+            
+            # 设置编译器
+            export CC=clang
+            export CXX=clang++
+            export FC=$(brew --prefix)/bin/gfortran
+            export FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch"
+            
+            # 设置ARM64编译标志
+            export CFLAGS="-arch arm64"
+            export CXXFLAGS="-arch arm64"
+            export LDFLAGS="-arch arm64 -L$(brew --prefix)/lib -Wl,-rpath,$(brew --prefix)/lib"
+            export ARCHFLAGS="-arch arm64"
+            
+            echo "✅ Configured for ARM64 target"
+            
+            # 创建internal_mpi目录结构
+            mkdir -p src/wannier_tools/internal_mpi/macos_arm64/{bin,lib,share}
+            
+            # 复制Open MPI运行时文件
+            echo "📋 Copying Open MPI runtime files..."
+            cp $(brew --prefix)/bin/mpirun src/wannier_tools/internal_mpi/macos_arm64/bin/
+            cp $(brew --prefix)/bin/orterun src/wannier_tools/internal_mpi/macos_arm64/bin/ 2>/dev/null || true
+            # prterun (OpenMPI ≥5) 同样复制
+            cp $(brew --prefix)/bin/prterun src/wannier_tools/internal_mpi/macos_arm64/bin/ 2>/dev/null || true
+            
+            # 复制 OpenMPI 帮助文件和配置文件
+            if [ -d "$(brew --prefix)/share/openmpi" ]; then
+              cp -r $(brew --prefix)/share/openmpi/* src/wannier_tools/internal_mpi/macos_arm64/share/ 2>/dev/null || true
+              echo "✅ OpenMPI share files copied"
+            fi
+            
+            # 复制共享库 (包括所有 MPI 和依赖库)
+            echo "📦 Copying MPI libraries..."
+            cp $(brew --prefix)/lib/libmpi.*.dylib src/wannier_tools/internal_mpi/macos_arm64/lib/ 2>/dev/null || true
+            cp $(brew --prefix)/lib/libopen-rte.*.dylib src/wannier_tools/internal_mpi/macos_arm64/lib/ 2>/dev/null || true
+            cp $(brew --prefix)/lib/libopen-pal.*.dylib src/wannier_tools/internal_mpi/macos_arm64/lib/ 2>/dev/null || true
+            
+            echo "📦 Copying hwloc dependencies..."
+            cp $(brew --prefix)/lib/libhwloc.*.dylib src/wannier_tools/internal_mpi/macos_arm64/lib/ 2>/dev/null || true
+            
+            echo "📦 Copying other potential MPI dependencies..."
+            # 复制其他可能的依赖
+            cp $(brew --prefix)/lib/libevent*.dylib src/wannier_tools/internal_mpi/macos_arm64/lib/ 2>/dev/null || true
+            cp $(brew --prefix)/lib/libpmix*.dylib src/wannier_tools/internal_mpi/macos_arm64/lib/ 2>/dev/null || true
+            cp $(brew --prefix)/lib/libprte*.dylib src/wannier_tools/internal_mpi/macos_arm64/lib/ 2>/dev/null || true
+            cp $(brew --prefix)/lib/libprrte*.dylib src/wannier_tools/internal_mpi/macos_arm64/lib/ 2>/dev/null || true
+            
+            # 修复 mpirun 和 orterun 的动态库路径，使其使用相对路径查找依赖库
+            echo "🔧 Fixing dynamic library paths for MPI executables..."
+            brew_prefix=$(brew --prefix)
+            
+            # 定义需要修复的库列表
+            libs_to_fix="libhwloc.15.dylib libhwloc.dylib libevent-2.1.dylib libevent.dylib libpmix.dylib libpmix.2.dylib libprte.dylib libprte.2.dylib libprrte.dylib libprrte.3.dylib"
+            
+            # 修复 mpirun 的路径
+            if [ -f "src/wannier_tools/internal_mpi/macos_arm64/bin/mpirun" ]; then
+              echo "🔧 Fixing mpirun paths..."
+              for lib in $libs_to_fix; do
+                if [ -f "$brew_prefix/lib/$lib" ]; then
+                  install_name_tool -change "$brew_prefix/lib/$lib" "@executable_path/../lib/$lib" src/wannier_tools/internal_mpi/macos_arm64/bin/mpirun 2>/dev/null || true
+                  echo "  ✅ Fixed path for $lib in mpirun"
+                fi
+              done
+            fi
+            
+            # 修复 orterun 的路径
+            if [ -f "src/wannier_tools/internal_mpi/macos_arm64/bin/orterun" ]; then
+              echo "🔧 Fixing orterun paths..."
+              for lib in $libs_to_fix; do
+                if [ -f "$brew_prefix/lib/$lib" ]; then
+                  install_name_tool -change "$brew_prefix/lib/$lib" "@executable_path/../lib/$lib" src/wannier_tools/internal_mpi/macos_arm64/bin/orterun 2>/dev/null || true
+                  echo "  ✅ Fixed path for $lib in orterun"
+                fi
+              done
+            fi
+            
+            # 修复 prterun 的路径
+            if [ -f "src/wannier_tools/internal_mpi/macos_arm64/bin/prterun" ]; then
+              echo "🔧 Fixing prterun paths..."
+              for lib in $libs_to_fix; do
+                if [ -f "$brew_prefix/lib/$lib" ]; then
+                  install_name_tool -change "$brew_prefix/lib/$lib" "@executable_path/../lib/$lib" src/wannier_tools/internal_mpi/macos_arm64/bin/prterun 2>/dev/null || true
+                  echo "  ✅ Fixed path for $lib in prterun"
+                fi
+              done
+            fi
+            
+            echo "✅ Open MPI runtime files copied to internal_mpi/macos_arm64/"
+            echo "📋 Contents:"
+            find src/wannier_tools/internal_mpi/macos_arm64/ -type f 2>/dev/null || true
+          
+          # Linux: 使用auditwheel修复并打包Open MPI
+          CIBW_REPAIR_WHEEL_COMMAND_LINUX: |
+            # Install zip for wheel manipulation (use yum for manylinux containers)
+            yum install -y zip unzip
+            
+            # First repair the wheel with auditwheel to the destination directory
+            auditwheel repair {wheel} -w {dest_dir}
+            
+            # Find the repaired wheel and add Open MPI files
+            cd {dest_dir}
+            repaired_wheel=$(ls *.whl | head -1)
+            if [ -n "$repaired_wheel" ]; then
+              echo "Adding Open MPI files to $repaired_wheel"
+              
+              # Create a temporary directory to extract and modify the wheel
+              temp_dir=$(mktemp -d)
+              cd "$temp_dir"
+              
+              # Extract the wheel
+              if [ ! -f "$OLDPWD/$repaired_wheel" ]; then
+                echo "❌ Wheel file not found: $OLDPWD/$repaired_wheel"
+                exit 1
+              fi
+              unzip "$OLDPWD/$repaired_wheel"
+              
+              # Create internal_mpi directory structure
+              mkdir -p wannier_tools/internal_mpi/linux_x86_64/{bin,lib}
+              
+              # Copy Open MPI files from the build context (they should be in the container)
+              # The files were copied during CIBW_BEFORE_BUILD_LINUX
+              if [ -d "/project/src/wannier_tools/internal_mpi/linux_x86_64/bin" ]; then
+                cp /project/src/wannier_tools/internal_mpi/linux_x86_64/bin/* wannier_tools/internal_mpi/linux_x86_64/bin/ 2>/dev/null || echo "No bin files to copy"
+              fi
+              if [ -d "/project/src/wannier_tools/internal_mpi/linux_x86_64/lib" ]; then
+                cp /project/src/wannier_tools/internal_mpi/linux_x86_64/lib/* wannier_tools/internal_mpi/linux_x86_64/lib/ 2>/dev/null || echo "No lib files to copy"
+              fi
+              
+              # Show what we copied
+              echo "Contents of internal_mpi:"
+              find wannier_tools/internal_mpi/ -type f 2>/dev/null || echo "No files in internal_mpi"
+              
+              # Recreate the wheel
+              zip -r "$OLDPWD/$repaired_wheel" .
+              cd ..
+              rm -rf "$temp_dir"
+              echo "✅ Open MPI files added to $repaired_wheel"
+            else
+              echo "❌ No repaired wheel found in {dest_dir}"
+              echo "Available files:"
+              ls -la
+            fi
           
           # macOS: 使用delocate修复并打包Open MPI
           CIBW_REPAIR_WHEEL_COMMAND_MACOS: |
