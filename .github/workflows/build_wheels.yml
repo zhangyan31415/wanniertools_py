@@ -178,7 +178,8 @@ jobs:
                 echo "  - Copying share/$d"
                 echo "    Source: $CONDA_PREFIX/share/$d"
                 echo "    Target: $INTERNAL_MPI_DIR/share/$d"
-                cp -r "$CONDA_PREFIX/share/$d" "$INTERNAL_MPI_DIR/share/"
+                cp -rL "$CONDA_PREFIX/share/$d" "$INTERNAL_MPI_DIR/share/"
+                ls -la "$INTERNAL_MPI_DIR/share/"
                 echo "    ✅ Copied successfully"
               else
                 echo "  - Share directory $d not found, skipping"
@@ -193,7 +194,7 @@ jobs:
             else
               echo "❌ Missing help-schizo-base.txt - this will cause runtime errors!"
               echo "📂 Contents of $INTERNAL_MPI_DIR/share/:"
-              ls -la "$INTERNAL_MPI_DIR/share/" || echo "Share directory not found"
+              ls -lRa "$INTERNAL_MPI_DIR/share/" || echo "Share directory not found"
               exit 1
             fi
 
@@ -264,7 +265,7 @@ jobs:
             
             # 复制 OpenMPI 帮助文件和配置文件
             if [ -d "$(brew --prefix)/share/openmpi" ]; then
-              cp -r $(brew --prefix)/share/openmpi/* src/wannier_tools/internal_mpi/macos_arm64/share/ 2>/dev/null || true
+              cp -rL $(brew --prefix)/share/openmpi/* src/wannier_tools/internal_mpi/macos_arm64/share/ 2>/dev/null #|| true
               echo "✅ OpenMPI share files copied"
             fi
             
