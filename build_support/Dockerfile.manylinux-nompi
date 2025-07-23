@@ -3,12 +3,12 @@ FROM quay.io/pypa/manylinux2014_x86_64:latest
 
 # 安装系统层面的编译依赖，不包含 MPI 运行时
 RUN yum install -y --setopt=keepcache=0 \
+        gcc-gfortran \
+        openblas-devel \
+        arpack-devel \
         && yum clean all -y \
         && rm -rf /var/cache/yum
 
-        #gcc-gfortran \
-        #openblas-devel \
-        #arpack-devel \
 # 为容器里所有 CPython 版本预装 Python 构建依赖
 # 这样 cibuildwheel 就不需要重新下载这些包了
 RUN for PYBIN in /opt/python/cp39/bin; do \
