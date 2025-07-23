@@ -256,6 +256,23 @@ jobs:
             # --- Debug output ---
             echo "📂 Final content of bundled MPI directory:"
             find $INTERNAL_MPI_DIR -maxdepth 3 -print
+            
+            # --- Test bundled MPI ---
+            echo "🧪 Testing bundled MPI executables..."
+            if [ -f $INTERNAL_MPI_DIR/bin/prterun ]; then
+              echo "✅ prterun located at $INTERNAL_MPI_DIR/bin/prterun"
+              echo "🔗 ldd output:"
+              ldd $INTERNAL_MPI_DIR/bin/prterun || echo "ldd failed"
+              echo "🚀 Testing prterun --help:"
+              # Set environment for bundled MPI
+              export OPAL_PREFIX="$PWD/$INTERNAL_MPI_DIR"
+              export OPAL_PKGDATADIR="$PWD/$INTERNAL_MPI_DIR/share/openmpi"
+              export OPAL_DATADIR="$PWD/$INTERNAL_MPI_DIR/share"
+              export LD_LIBRARY_PATH="$PWD/$INTERNAL_MPI_DIR/lib:$LD_LIBRARY_PATH"
+              $INTERNAL_MPI_DIR/bin/prterun --help 2>&1 | head -10 || echo "❌ prterun --help failed"
+            else
+              echo "⚠️ prterun not found!"
+            fi
           
           # macOS: 安装Open MPI并复制到internal_mpi目录
           CIBW_BEFORE_BUILD_MACOS: |
@@ -537,6 +554,18 @@ jobs:
           
           cd examples/Haldane_model
           echo "=== 测试单核运行 ==="
+          
+          # 设置bundled OpenMPI环境变量
+          export INTERNAL_MPI_DIR="$PWD/../../src/wannier_tools/internal_mpi/linux_x86_64"
+          if [ -d "$INTERNAL_MPI_DIR" ]; then
+            export OPAL_PREFIX="$INTERNAL_MPI_DIR"
+            export OPAL_PKGDATADIR="$INTERNAL_MPI_DIR/share/openmpi"
+            export OPAL_DATADIR="$INTERNAL_MPI_DIR/share"
+            export LD_LIBRARY_PATH="$INTERNAL_MPI_DIR/lib:$LD_LIBRARY_PATH"
+            echo "✅ Set bundled MPI environment variables"
+          else
+            echo "⚠️ Bundled MPI directory not found: $INTERNAL_MPI_DIR"
+          fi
           
           # 强化错误检测 - 单核测试
           set +e
