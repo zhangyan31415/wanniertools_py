@@ -20,6 +20,9 @@ authors = [
     { name = "Matthias Troyer" },
     { name = "Alexey A. Soluyanov" },
 ]
+maintainers = [
+    { name = "QuanSheng Wu", email = "wuquansheng@gmail.com" }
+]
 license = { text = "GPL-3.0-or-later" }
 readme = "README.md"
 requires-python = ">=3.9"
@@ -64,7 +67,7 @@ install = ["--tags=python-runtime,extension,devel,runtime,data"]
 # cibuildwheel配置
 [tool.cibuildwheel]
 # 构建哪些版本
-build = ["cp39-*", "cp310-*"]
+build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*"]
 # 跳过哪些版本
 skip = ["pp*", "*musllinux*"]
 
