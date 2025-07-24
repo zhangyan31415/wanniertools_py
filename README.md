@@ -28,7 +28,7 @@ pip install -i https://test.pypi.org/simple/ wannier-tools==0.0.2
   * **Windows**: 当前版本功能仍在开发中 (暂不支持运行)
 * **Python:** 3.9 - 3.12 版本
 * **NumPy:** >= 2.0
-* **MPI 运行时:** 无需额外安装，所有平台直接使用内置串行逻辑；仅 macOS 并行时需 `brew install open-mpi`。
+* **MPI:** 无需额外安装。
 
 ## 使用
 
@@ -45,15 +45,14 @@ wt-py -n 4 -i input_file.in
 
 ## 平台功能支持
 
-| 功能       | Linux   | macOS                       | Windows (开发中) |
-| -------- | ------- | --------------------------- | ------------- |
-| 串行计算     | ✅       | ✅                           | ❌             |
-| MPI 并行计算 | ❌ (开发中) | ✅ (`brew install open-mpi`) | ❌             |
+| 功能        | Linux      | macOS          | Windows  |
+| --------    | ---------- | -------------- | ------------- |
+| 串行计算     | ✅         | ✅           | ❌ (开发中)             |
+| MPI 并行计算 | ❌ (开发中) | ✅           | ❌ (开发中)             |
 
 **注意：**
 
 * **所有平台**：直接运行 `wt-py -i wt.in` 即可，无需安装 MPI。
-* **macOS 用户**：并行时需先 `brew install open-mpi`。
 * **Windows 用户**：当前版本暂不支持运行，后续开发中。
 
 ## 许可证
