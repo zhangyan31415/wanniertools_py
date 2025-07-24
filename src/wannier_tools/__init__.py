@@ -83,7 +83,7 @@ def run(input_file="wt.in", output_file=None):
         input_dir = '.'
 
     if not os.path.exists(input_path):
-    if is_main_process:
+        if is_main_process:
             print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             print(f"!!! ERROR: Input file not found: {input_file}")
             print("!!! Please ensure the input file exists and the path is correct.")

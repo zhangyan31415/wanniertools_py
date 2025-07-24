@@ -16,7 +16,7 @@ WannierTools 是一个用于研究新型拓扑材料的开源软件包。它提�
 我们推荐通过 PyPI 安装 `wannier-tools`。
 
 ```bash
-pip install wannier-tools==0.0.2
+pip install -i https://test.pypi.org/simple/ wannier-tools==0.0.2
 ```
 
 ### 依赖环境
