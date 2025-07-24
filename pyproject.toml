@@ -65,7 +65,7 @@ install = ["--tags=python-runtime,extension,devel,runtime,data"]
 # cibuildwheel配置
 [tool.cibuildwheel]
 # 构建哪些版本
-build = ["cp39-*"]
+build = ["cp39-*", "cp310-*", "cp311-*"]
 # 跳过哪些版本
 skip = ["pp*", "*musllinux*"]
 

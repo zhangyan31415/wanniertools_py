@@ -19,8 +19,8 @@ name: Build and Test WannierTools Cross-Platform Wheels
 # - 构建所有: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-*"
 # 
 env:
-  # Python版本配置 - 在此处修改支持的Python版本
-  PYTHON_VERSIONS: "cp39-*"
+  # 🎯 Python版本配置 - 只需要在这里修改一次！
+  PYTHON_VERSIONS_SOURCE: "3.9 3.10"  # 主版本列表，空格分隔
   
   # 其他构建配置
   BUILD_VERBOSITY: "3"                    # 构建详细度 (0-3, 推荐3用于调试)
@@ -39,9 +39,63 @@ on:
   workflow_dispatch:  # 允许手动触发
 
 jobs:
+  setup:
+    name: Generate Python version configurations
+    runs-on: ubuntu-latest
+    outputs:
+      python-versions-cibw: ${{ steps.config.outputs.python-versions-cibw }}
+      python-versions-test: ${{ steps.config.outputs.python-versions-test }}
+      python-versions-docker: ${{ steps.config.outputs.python-versions-docker }}
+      python-versions-pyproject: ${{ steps.config.outputs.python-versions-pyproject }}
+    steps:
+      - name: Generate configurations
+        id: config
+        run: |
+          # 从环境变量读取源版本列表
+          SOURCE_VERSIONS="${{ env.PYTHON_VERSIONS_SOURCE }}"
+          echo "Source Python versions: $SOURCE_VERSIONS"
+          
+          # 生成 cibuildwheel 格式: "cp39-* cp310-* cp311-*"
+          CIBW_VERSIONS=""
+          for version in $SOURCE_VERSIONS; do
+            major_minor=$(echo $version | tr -d '.')
+            CIBW_VERSIONS="$CIBW_VERSIONS cp${major_minor}-*"
+          done
+          CIBW_VERSIONS=$(echo $CIBW_VERSIONS | sed 's/^ *//')
+          echo "python-versions-cibw=$CIBW_VERSIONS" >> $GITHUB_OUTPUT
+          
+          # 生成测试矩阵格式: ["3.9", "3.10", "3.11"]
+          TEST_VERSIONS=$(echo "$SOURCE_VERSIONS" | sed 's/ /", "/g' | sed 's/^/["/' | sed 's/$/"]/')
+          echo "python-versions-test=$TEST_VERSIONS" >> $GITHUB_OUTPUT
+          
+          # 生成 Docker 格式: "cp3{9,10,11}-*"
+          DOCKER_PATTERN="cp3{"
+          for version in $SOURCE_VERSIONS; do
+            major_minor=$(echo $version | tr -d '.')
+            DOCKER_PATTERN="$DOCKER_PATTERN${major_minor##3},"
+          done
+          DOCKER_PATTERN=$(echo $DOCKER_PATTERN | sed 's/,$//')"}-*"
+          echo "python-versions-docker=$DOCKER_PATTERN" >> $GITHUB_OUTPUT
+          
+          # 生成 pyproject.toml 格式: ["cp39-*", "cp310-*", "cp311-*"]
+          PYPROJECT_VERSIONS="["
+          for version in $SOURCE_VERSIONS; do
+            major_minor=$(echo $version | tr -d '.')
+            PYPROJECT_VERSIONS="$PYPROJECT_VERSIONS\"cp${major_minor}-*\", "
+          done
+          PYPROJECT_VERSIONS=$(echo $PYPROJECT_VERSIONS | sed 's/, $//')"]"
+          echo "python-versions-pyproject=$PYPROJECT_VERSIONS" >> $GITHUB_OUTPUT
+          
+          echo "Generated configurations:"
+          echo "  CIBW: $CIBW_VERSIONS"
+          echo "  Test: $TEST_VERSIONS"  
+          echo "  Docker: $DOCKER_PATTERN"
+          echo "  Pyproject: $PYPROJECT_VERSIONS"
+
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    needs: setup
     defaults:
       run:
         shell: ${{ matrix.os == 'windows-latest' && 'cmd' || 'bash' }}
@@ -111,8 +165,8 @@ jobs:
         with:
           output-dir: wheelhouse
         env:
-          # 🐍 Python版本配置 (使用顶部env中定义的版本)
-          CIBW_BUILD: ${{ env.PYTHON_VERSIONS }}
+          # 🐍 Python版本配置 (使用动态生成的版本)
+          CIBW_BUILD: ${{ needs.setup.outputs.python-versions-cibw }}
           
           # 平台特定的架构配置
           CIBW_ARCHS_LINUX: ${{ matrix.cibw_archs }}
@@ -309,12 +363,12 @@ jobs:
   
   test_linux:
     name: Test Linux wheel (Python ${{ matrix.python-version }})
-    needs: build_wheels
+    needs: [setup, build_wheels]
     runs-on: ubuntu-latest
     if: always()  # Run even if some builds failed
     strategy:
       matrix:
-        python-version: ['3.9']
+        python-version: ${{ fromJson(needs.setup.outputs.python-versions-test) }}
     
     steps:
       - name: Checkout code
@@ -411,12 +465,12 @@ jobs:
 
   test_macos:
     name: Test macOS ARM64 wheel (Python ${{ matrix.python-version }})
-    needs: build_wheels
+    needs: [setup, build_wheels]
     runs-on: macos-latest
     if: always()
     strategy:
       matrix:
-        python-version: ['3.9']
+        python-version: ${{ fromJson(needs.setup.outputs.python-versions-test) }}
 
     steps:
       - name: Log macOS ARM64 test environment
@@ -588,12 +642,12 @@ jobs:
 
   test_windows:
     name: Test Windows wheel (Python ${{ matrix.python-version }})
-    needs: build_wheels
+    needs: [setup, build_wheels]
     runs-on: windows-latest
     if: always()  # Run even if some builds failed
     strategy:
       matrix:
-        python-version: ['3.9']
+        python-version: ${{ fromJson(needs.setup.outputs.python-versions-test) }}
     defaults:
       run:
         shell: cmd
@@ -755,7 +809,7 @@ jobs:
 
   collect_wheels:
     name: Collect all wheels
-    needs: [build_wheels, test_linux, test_macos, test_windows]
+    needs: [setup, build_wheels, test_linux, test_macos, test_windows]
     runs-on: ubuntu-latest
     # 只有当所有构建和测试都成功时才收集wheels
     if: success()
