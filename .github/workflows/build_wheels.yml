@@ -20,7 +20,7 @@ name: Build and Test WannierTools Cross-Platform Wheels
 # 
 env:
   # Python版本配置 - 在此处修改支持的Python版本
-  PYTHON_VERSIONS: "cp39-*, cp310-*"
+  PYTHON_VERSIONS: "cp39-*"
   
   # 其他构建配置
   BUILD_VERBOSITY: "3"                    # 构建详细度 (0-3, 推荐3用于调试)
