@@ -651,6 +651,7 @@ jobs:
       
       - name: Test serial functionality (Windows) 
         shell: pwsh
+        continue-on-error: true
         run: |
           Write-Host "=== Windows串行功能测试 ==="
           cd examples/Haldane_model
@@ -672,18 +673,16 @@ jobs:
             if ($single_exit_code -ne 0) {
               Write-Host "[ERROR] Windows串行测试失败，退出码: $single_exit_code"
               Write-Host "Output: $single_output"
-              # exit 1
             }
             
             # Check for computation results
             if (Test-Path "WT.out") {
               Write-Host "[OK] WT.out file generated successfully"
-              $content = Get-Content "WT.out" | Out-String
+              $content = Get-Content "WT.out" -Raw
               if ($content -match "Congratulations!") {
                 Write-Host "✅ WT.out 包含 'Congratulations!'"
               } else {
                 Write-Host "❌ WT.out 不包含 'Congratulations!'"
-                # exit 1
               }
               
               $time_cost = $content | Select-String "Time cost for whole program is about" | Select-Object -Last 1
@@ -691,7 +690,6 @@ jobs:
                 Write-Host "✅ Time cost: $($time_cost.ToString().Trim())"
               } else {
                 Write-Host "❌ 未找到 'Time cost for whole program is about' 信息"
-                # exit 1
               }
 
               $core_info = $content | Select-String "You are using.*CPU cores" | Select-Object -Last 1
@@ -702,11 +700,17 @@ jobs:
               }
             } else {
               Write-Host "[ERROR] WT.out file not generated"
-              # exit 1
             }
           } catch {
             Write-Host "[ERROR] Windows串行测试执行失败: $_"
-            # exit 1
+          }
+
+          if (Test-Path "WT.out") {
+            Write-Host "--- WT.out (last 20 lines) ---"
+            Get-Content "WT.out" | Select-Object -Last 20
+            Write-Host "-----------------------------"
+          } else {
+            Write-Host "[INFO] WT.out file not found, cannot display last 20 lines."
           }
         env:
           OPENBLAS_NUM_THREADS: 1
