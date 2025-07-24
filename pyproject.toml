@@ -11,7 +11,7 @@ build-backend = "mesonpy"
 
 [project]
 name = "wannier-tools"
-version = "0.0.1"
+version = "0.0.2"
 description = "A Python wrapper for the WannierTools code"
 authors = [
     { name = "QuanSheng Wu", email = "wuquansheng@gmail.com" },
