@@ -53,6 +53,16 @@ def run(input_file="wt.in", output_file=None):
     # Only output messages from the main process (rank 0)
     is_main_process = (mpi_rank is None or int(mpi_rank) == 0)
     
+    if is_main_process:
+        print("\n==========================================================")
+        print("              WannierTools Calculation Started")
+        print("==========================================================")
+        print(f"Input file: {input_file}")
+        if output_file:
+            print(f"Output will be redirected to: {output_file}")
+        else:
+            print("Output will be displayed in console")
+    
     try:
         from . import wannier_tools_ext
         if is_main_process:
@@ -67,12 +77,19 @@ def run(input_file="wt.in", output_file=None):
         return
 
     original_cwd = os.getcwd()
-    input_dir = os.path.dirname(os.path.abspath(input_file))
+    input_path = os.path.abspath(input_file)
+    input_dir = os.path.dirname(input_path)
     if not input_dir:
         input_dir = '.'
 
+    if not os.path.exists(input_path):
     if is_main_process:
-        print(f"Changing working directory to: {input_dir}")
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print(f"!!! ERROR: Input file not found: {input_file}")
+            print("!!! Please ensure the input file exists and the path is correct.")
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        return
+
     os.chdir(input_dir)
 
     try:
@@ -94,12 +111,20 @@ def run(input_file="wt.in", output_file=None):
             wannier_tools_ext.wannier_tools_wrapper.run_wannier_tools()
             if is_main_process:
                 print("Fortran subroutine finished.")
+
+        if is_main_process:
+            print("\n==========================================================")
+            print("        WannierTools Calculation Completed Successfully!")
+            print("==========================================================\n")
     except Exception as e:
         if is_main_process:
+            print("\n==========================================================")
+            print("             WannierTools Calculation Failed!")
+            print("==========================================================")
             error_msg = str(e).lower()
             if 'mpi' in error_msg or 'comm_f2c' in error_msg or 'mpi_init' in error_msg:
                 print("=" * 60)
-                print("MPI Error Detected!")
+                print("                 MPI Error Detected!")
                 print("=" * 60)
                 print(f"Error details: {e}")
                 print("\nThis error typically occurs when:")
@@ -120,9 +145,8 @@ def run(input_file="wt.in", output_file=None):
                 print("=" * 60)
             else:
                 print(f"An error occurred during the Fortran execution: {e}")
+            print("==========================================================\n")
     finally:
-        if is_main_process:
-            print(f"Restoring original working directory: {original_cwd}")
         os.chdir(original_cwd)
 
 def create_sample_input():

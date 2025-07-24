@@ -1,137 +1,68 @@
 # WannierTools
 
-WannierTools: An open-source software package for novel topological materials
+![wanniertools-logo](wt-logo.jpg)
 
-## 🚀 **GitHub Actions 自动化构建**
+WannierTools 是一个用于研究新型拓扑材料的开源软件包。它提供了一系列强大的工具，用于计算拓扑不变量、表面态、能带结构等。
 
-本项目使用 **GitHub Actions + cibuildwheel** 实现全自动多平台 wheel 构建：
+## ✨ 特点
 
-### ✨ **核心优势**
-- 🎯 **一键构建**: Push 代码自动构建所有平台
-- 🌍 **全平台支持**: Linux、macOS、Windows (Python 3.9-3.12)
-- 🔄 **运行时 MPI**: 无编译依赖，最大兼容性
-- 📦 **自动发布**: Tag 版本自动发布到 PyPI
+* **多平台支持**: 兼容 Linux、macOS 和 Windows 操作系统。
+* **并行计算**: **目前仅 macOS 支持基于 MPI 的并行计算**，其他平台的并行功能仍在开发中。
+* **易于安装**: 提供预编译的 wheel 包，简化了安装过程，无需复杂的编译步骤。
+* **功能全面**: 支持 WannierTools 的所有核心功能，满足科研和应用需求。
 
-### 🛠️ **使用方法**
-1. **自动构建**: Push 到 main/master 分支
-2. **测试构建**: GitHub Actions → "Test Build" → 手动触发
-3. **发布版本**: 创建 `v*` 标签自动发布
+## 🚀 安装指南
 
-## 快速开始
-
-### 安装
-
-从 PyPI 安装（推荐）：
-```bash
-pip install wannier-tools
-```
-
-从源码安装：
-```bash
-git clone <your-repo>
-cd wannier_tools_pip
-pip install .
-```
-
-#### Linux用户（推荐）
-```bash
-mamba create -n wannier-tools python=3.9 numpy -y
-mamba activate wannier-tools
-mamba install openmpi -y
-pip install wannier_tools-2.7.1-cp39-cp39-linux_x86_64.whl
-```
-
-#### macOS用户
-```bash
-mamba create -n wannier-tools python=3.9 numpy -y
-mamba activate wannier-tools
-mamba install openmpi -y
-pip install wannier_tools-2.7.1-cp39-cp39-macosx_*.whl
-```
-
-#### Windows用户
-```bash
-mamba create -n wannier-tools python=3.9 numpy -y
-mamba activate wannier-tools
-pip install wannier_tools-2.7.1-cp39-cp39-win_*.whl
-```
-
-### 使用
+我们推荐通过 PyPI 安装 `wannier-tools`。
 
 ```bash
-# 激活环境
-mamba activate wannier-tools
-
-# 运行WannierTools
-wt-py -i input_file.in
-
-# 并行运行（Linux/macOS）
-mpirun -np 4 wt-py -i input_file.in
+pip install wannier-tools==0.0.2
 ```
 
-## 平台支持
+### 依赖环境
 
-| 功能 | Linux | macOS | Windows |
-|------|-------|-------|---------|
-| 串行计算 | ✅ | ✅ | ✅ |
-| MPI并行计算 | ✅ | ✅ | ❌ |
-| 高性能计算 | ✅ | ⚠️ | ❌ |
+* **操作系统**:
 
-## 文档
+  * **Linux**: CentOS 7 及以上版本
+  * **macOS**: 版本 14.6 (Sonoma) 及以上
+  * **Windows**: 当前版本功能仍在开发中 (暂不支持运行)
+* **Python:** 3.9 - 3.12 版本
+* **NumPy:** >= 2.0
+* **MPI 运行时:** 无需额外安装，所有平台直接使用内置串行逻辑；仅 macOS 并行时需 `brew install open-mpi`。
 
-- [用户安装指南](docs/user/USER_INSTALL_GUIDE.md) - 详细的安装和使用说明
-- [Windows安装指南](docs/user/WINDOWS_INSTALL_GUIDE.md) - Windows特定安装说明
-- [开发者指南](docs/developer/WHEEL_RELEASE_GUIDE.md) - 构建和发布说明
-- [Windows构建指南](docs/developer/WINDOWS_BUILD_GUIDE.md) - Windows构建说明
+## 使用
 
-## 构建
-
-### 自动化构建（推荐）
-
-#### 使用cibuildwheel
 ```bash
-# 构建所有Python版本
-python scripts/build/build_with_cibuildwheel.py
+# 串行运行（适用于所有平台）
+# 默认输入文件为当前目录下的 wt.in
+# 如需指定其他输入文件，可使用 -i
+wt-py -i wt.in
 
-# 或直接使用cibuildwheel
-cibuildwheel --platform linux --output-dir wheelhouse
+# 并行运行（仅限 macOS）
+# <N> 是并行进程数，例如 4
+wt-py -n 4 -i input_file.in
 ```
 
-#### GitHub Actions
-```bash
-# 推送标签触发自动构建
-git tag v2.7.1
-git push origin v2.7.1
-```
+## 平台功能支持
 
-### 手动构建
-```bash
-# 多平台构建
-python scripts/build/build_multi_platform.py
+| 功能       | Linux   | macOS                       | Windows (开发中) |
+| -------- | ------- | --------------------------- | ------------- |
+| 串行计算     | ✅       | ✅                           | ❌             |
+| MPI 并行计算 | ❌ (开发中) | ✅ (`brew install open-mpi`) | ❌             |
 
-# 或手动构建
-rm -rf build/ dist/ *.egg-info/ .mesonpy_build/
-python -m build --wheel
-```
+**注意：**
 
-## 特性
-
-- **多平台支持**: Linux、macOS、Windows
-- **并行计算**: Linux/macOS支持MPI并行
-- **易于安装**: 预编译wheel包，无需复杂编译
-- **完整功能**: 支持所有WannierTools功能
-
-## 系统要求
-
-- Python 3.8-3.11
-- NumPy >= 1.20.0
-- MPI运行时（Linux/macOS，用于并行计算）
+* **所有平台**：直接运行 `wt-py -i wt.in` 即可，无需安装 MPI。
+* **macOS 用户**：并行时需先 `brew install open-mpi`。
+* **Windows 用户**：当前版本暂不支持运行，后续开发中。
 
 ## 许可证
 
-GPL-3.0-or-later
+本项目遵循 **GNU General Public License 第3版或更高版本**（GNU GPLv3+）。
 
 ## 更多信息
 
-- 官方网站: https://www.wanniertools.com/
-- 问题反馈: https://github.com/quanshengwu/wannier_tools/issues # wanniertools_py
+* **源代码地址：** [https://github.com/quanshengwu/wannier\_tools](https://github.com/quanshengwu/wannier_tools)
+* **官方文档：** [http://www.wanniertools.com](http://www.wanniertools.com)
+* **主页：** [https://www.wanniertools.org](https://www.wanniertools.org)
+* **QQ 交流群号：** 709225749
