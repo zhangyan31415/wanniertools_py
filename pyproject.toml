@@ -101,7 +101,7 @@ archs = ["AMD64"]
 environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1" }
 before-build = [
     "echo Installing Windows wheels with hybrid gfortran+MS-MPI compatibility",
-    "pip install delvewheel",
+    "pip install delvewheel -q",
     "echo Installing MSYS2 gfortran-compatible libraries...",
     "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-openblas",
     "echo Installing MSYS2 gfortran-compatible MS-MPI development libraries...",
