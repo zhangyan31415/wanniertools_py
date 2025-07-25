@@ -97,19 +97,35 @@ before-build = [
 archs = ["x86_64", "arm64"]
 environment = {}
 
-# Windows特定配置
+# Windows特定配置 - 静态链接策略避免DLL冲突
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
-environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch -fstack-protector-strong -fcheck=bounds", CFLAGS = "-fstack-protector-strong", CXXFLAGS = "-fstack-protector-strong", OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1", PATH = "C:\\msys64\\mingw64\\bin;${PATH}" }
+environment = { 
+    FC = "gfortran", 
+    CC = "gcc", 
+    CXX = "g++", 
+    FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch -static-libgfortran -static-libgcc -O2", 
+    CFLAGS = "-static-libgcc -O2", 
+    CXXFLAGS = "-static-libgcc -static-libstdc++ -O2",
+    LDFLAGS = "-static-libgfortran -static-libgcc -Wl,--allow-multiple-definition",
+    OPENBLAS_NUM_THREADS = "1", 
+    OMP_NUM_THREADS = "1", 
+    MKL_NUM_THREADS = "1",
+    BLAS = "None",
+    LAPACK = "None",
+    PATH = "C:\\msys64\\mingw64\\bin;${PATH}" 
+}
 before-build = [
-    "echo Installing Windows wheels without MPI - Enhanced version",
+    "echo === Windows Static Build Strategy ===",
     "pip install delvewheel -q",
-    "echo Installing MSYS2 libraries with better compatibility...",
-    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-openblas mingw-w64-x86_64-lapack mingw-w64-x86_64-gcc-fortran",
-    "echo Verifying library installation...",
-    "dir C:\\msys64\\mingw64\\bin\\libopenblas*.dll",
-    "dir C:\\msys64\\mingw64\\bin\\liblapack*.dll",
-    "dir C:\\msys64\\mingw64\\bin\\libgfortran*.dll",
-    "echo [OK] Enhanced serial build configured with memory protection."
+    "echo Installing minimal MSYS2 toolchain...",
+    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-gcc mingw-w64-x86_64-reference-blas mingw-w64-x86_64-reference-lapack",
+    "echo Verifying toolchain...",
+    "gfortran --version",
+    "gcc --version", 
+    "echo Checking for reference BLAS/LAPACK (static)...",
+    "dir C:\\msys64\\mingw64\\lib\\*blas*.a",
+    "dir C:\\msys64\\mingw64\\lib\\*lapack*.a",
+    "echo [OK] Static build toolchain ready - No DLL dependencies"
 ]
-repair-wheel-command = "delvewheel repair --add-path C:\\msys64\\mingw64\\bin --add-path C:\\msys64\\mingw64\\lib -w {dest_dir} {wheel}" 
+repair-wheel-command = "delvewheel repair --add-path C:\\msys64\\mingw64\\bin -w {dest_dir} {wheel}" 
