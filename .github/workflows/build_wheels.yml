@@ -20,9 +20,9 @@ name: Build and Test WannierTools Cross-Platform Wheels
 # 
 env:
   # 🎯 Python版本配置 - 只需要在这里修改一次！
-  PYTHON_VERSIONS_SOURCE: "3.9"  # 主版本列表，空格分隔
+  PYTHON_VERSIONS_SOURCE: "3.8 3.9 3.13"  # 主版本列表，空格分隔
   
-  
+
   # 其他构建配置
   BUILD_VERBOSITY: "3"                    # 构建详细度 (0-3, 推荐3用于调试)
   MACOS_DEPLOYMENT_TARGET: "14.0"         # macOS最低版本要求 (支持Apple Silicon)
