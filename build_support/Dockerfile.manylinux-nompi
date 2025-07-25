@@ -1,7 +1,7 @@
 # 使用最新的 manylinux2014 镜像
-# FROM quay.io/pypa/manylinux2014_x86_64:latest
+FROM quay.io/pypa/manylinux2014_x86_64:latest
 # FROM docker.io/pypa/manylinux2014_x86_64:latest
-FROM ghcr.io/pypa/manylinux2014_x86_64:latest
+# FROM ghcr.io/pypa/manylinux2014_x86_64:latest
 
 # 安装系统层面的编译依赖，不包含 MPI 运行时
 RUN yum install -y --setopt=keepcache=0 \
