@@ -104,8 +104,9 @@ environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-inva
 before-build = [
     "echo === Windows Static Build Strategy ===",
     "pip install delvewheel -q",
+    "pip install ninja -q",
     "echo Installing minimal MSYS2 toolchain...",
-    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-gcc mingw-w64-x86_64-openblas",
+    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-gcc mingw-w64-x86_64-openblas mingw-w64-x86_64-lapack mingw-w64-x86_64-arpack",
     "echo Verifying toolchain...",
     "gfortran --version",
     "gcc --version", 
