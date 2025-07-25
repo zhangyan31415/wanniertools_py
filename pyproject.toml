@@ -108,7 +108,7 @@ before-build = [
     "pip install ninja -q",
     "echo Installing latest MSYS2 toolchain...",
     "C:\\msys64\\usr\\bin\\pacman.exe -Syu --noconfirm",
-    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-gcc mingw-w64-x86_64-openblas mingw-w64-x86_64-arpack",
+    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-openblas mingw-w64-x86_64-arpack",
     "echo Verifying toolchain...",
     "gfortran --version",
     "gcc --version",
