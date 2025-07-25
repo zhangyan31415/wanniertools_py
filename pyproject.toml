@@ -74,7 +74,8 @@ skip = ["pp*", "*musllinux*"]
 # 测试设置
 test-command = [
     "python -c \"import wannier_tools; print('Import successful')\"",
-    "python -c \"import wannier_tools; print('Version:', wannier_tools.__version__)\""
+    "python -c \"import wannier_tools; print('Version:', wannier_tools.__version__)\"",
+    "python -c \"print('=== Testing wheel import and basic functionality ==='); import wannier_tools; print(f'Package location: {wannier_tools.__file__}'); print(f'Available modules: {[attr for attr in dir(wannier_tools) if not attr.startswith(\\\"_\\\")]}')\""
 ]
 test-requires = ["pytest"]
 
@@ -113,10 +114,14 @@ before-build = [
     "gcc --version",
     "echo Cleaning potential DLL conflicts...",
     "if exist C:\\msys64\\mingw64\\bin\\libgcc_s_seh-1.dll del /f /q C:\\msys64\\mingw64\\bin\\libgcc_s_seh-1.dll",
-    "if exist C:\\msys64\\mingw64\\bin\\libgomp-1.dll del /f /q C:\\msys64\\mingw64\\bin\\libgomp-1.dll",
-    "if exist C:\\msys64\\mingw64\\bin\\libwinpthread-1.dll del /f /q C:\\msys64\\mingw64\\bin\\libwinpthread-1.dll",
+    #"if exist C:\\msys64\\mingw64\\bin\\libgomp-1.dll del /f /q C:\\msys64\\mingw64\\bin\\libgomp-1.dll",
+    #"if exist C:\\msys64\\mingw64\\bin\\libwinpthread-1.dll del /f /q C:\\msys64\\mingw64\\bin\\libwinpthread-1.dll",
     "echo Checking for OpenBLAS libraries...",
     "dir C:\\msys64\\mingw64\\lib\\*openblas*.a",
     "echo [OK] Latest static build toolchain ready"
 ]
-repair-wheel-command = "delvewheel repair --add-path C:\\msys64\\mingw64\\bin --no-dll libgcc_s_seh-1.dll --no-dll libwinpthread-1.dll -w {dest_dir} {wheel}" 
+repair-wheel-command = [
+    "delvewheel repair --add-path C:\\msys64\\mingw64\\bin --no-dll libgcc_s_seh-1.dll -w {dest_dir} {wheel}",
+    "echo === Final wheel contents ===",
+    "python -c \"import zipfile, sys; z=zipfile.ZipFile('{dest_dir}/' + [f for f in __import__('os').listdir('{dest_dir}') if f.endswith('.whl')][0]); [print(f'{info.filename:<60} {info.file_size:>10} bytes') for info in z.infolist()]; print(f'Total files: {len(z.infolist())}, Total size: {sum(info.file_size for info in z.infolist()):,} bytes')\""
+] 
