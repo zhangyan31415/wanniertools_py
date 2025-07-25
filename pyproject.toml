@@ -121,7 +121,7 @@ before-build = [
     "echo [OK] Latest static build toolchain ready"
 ]
 repair-wheel-command = [
-    "delvewheel repair --add-path C:\\msys64\\mingw64\\bin --no-dll libgcc_s_seh-1.dll -w {dest_dir} {wheel}",
+    "delvewheel repair --add-path C:\\msys64\\mingw64\\bin -w {dest_dir} {wheel}",
     "echo === Final wheel contents ===",
     "python -c \"from pathlib import Path; import zipfile; d=Path(r'{dest_dir}'); w=next(d.glob('*.whl')); z=zipfile.ZipFile(w); [print(f'{i.filename:<60} {i.file_size:>10} bytes') for i in z.infolist()]; print(f'Total files: {len(z.infolist())}, Total size: {sum(i.file_size for i in z.infolist()):,} bytes')\""
 ] 
