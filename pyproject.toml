@@ -105,13 +105,13 @@ before-build = [
     "echo === Windows Static Build Strategy ===",
     "pip install delvewheel -q",
     "echo Installing minimal MSYS2 toolchain...",
-    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-gcc mingw-w64-x86_64-blas mingw-w64-x86_64-lapack",
+    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-gcc mingw-w64-x86_64-openblas",
     "echo Verifying toolchain...",
     "gfortran --version",
     "gcc --version", 
-    "echo Checking for reference BLAS/LAPACK (static)...",
-    "dir C:\\msys64\\mingw64\\lib\\*blas*.a",
-    "dir C:\\msys64\\mingw64\\lib\\*lapack*.a",
-    "echo [OK] Static build toolchain ready - No DLL dependencies"
+    "echo Checking for OpenBLAS libraries...",
+    "dir C:\\msys64\\mingw64\\lib\\*openblas*.a",
+    "dir C:\\msys64\\mingw64\\lib\\*openblas*.dll.a", 
+    "echo [OK] Static build toolchain ready with OpenBLAS"
 ]
 repair-wheel-command = "delvewheel repair --add-path C:\\msys64\\mingw64\\bin -w {dest_dir} {wheel}" 
