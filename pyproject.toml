@@ -2,7 +2,6 @@
 requires = [
     "setuptools", 
     "wheel", 
-    "numpy", 
     "meson>=0.64.0",        #build-time only
     "ninja",                #build-time only
     "meson-python>=0.13.0"  #build-time only
@@ -26,9 +25,7 @@ maintainers = [
 license = { text = "GPL-3.0-or-later" }
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = [
-    "numpy>=2.0.0",
-]
+
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
