@@ -106,13 +106,12 @@ before-build = [
     "pip install delvewheel -q",
     "pip install ninja -q",
     "echo Installing minimal MSYS2 toolchain...",
-    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-gcc mingw-w64-x86_64-openblas mingw-w64-x86_64-lapack mingw-w64-x86_64-arpack",
+    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-gcc mingw-w64-x86_64-openblas mingw-w64-x86_64-arpack",
     "echo Verifying toolchain...",
     "gfortran --version",
     "gcc --version", 
     "echo Checking for OpenBLAS libraries...",
-    "dir C:\\msys64\\mingw64\\lib\\*openblas*.a",
-    "dir C:\\msys64\\mingw64\\lib\\*openblas*.dll.a", 
-    "echo [OK] Static build toolchain ready with OpenBLAS"
+    "dir C:\\msys64\\mingw64\\lib\\*openblas*.a", 
+    "echo [OK] Minimal static build toolchain ready"
 ]
 repair-wheel-command = "delvewheel repair --add-path C:\\msys64\\mingw64\\bin -w {dest_dir} {wheel}" 
