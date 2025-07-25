@@ -25,7 +25,7 @@ maintainers = [
 ]
 license = { text = "GPL-3.0-or-later" }
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "numpy",
 ]
@@ -38,12 +38,12 @@ classifiers = [
     "Operating System :: MacOS :: MacOS X",
     "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Fortran",
     "Topic :: Scientific/Engineering :: Physics",
 ]
@@ -69,7 +69,7 @@ install = ["--tags=python-runtime,extension,devel,runtime,data"]
 # cibuildwheel配置
 [tool.cibuildwheel]
 # 构建哪些版本
-build = ["cp38-*", "cp313-*"]
+build = ["cp313-*", "cp314-*"]
 # 跳过哪些版本
 skip = ["pp*", "*musllinux*"]
 
