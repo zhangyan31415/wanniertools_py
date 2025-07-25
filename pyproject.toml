@@ -101,23 +101,23 @@ environment = {}
 # Windows特定配置 - 静态链接策略避免DLL冲突
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
-environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch -O2", CFLAGS = "-O2", CXXFLAGS = "-O2", LDFLAGS = "-Wl,--allow-multiple-definition", OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1", BLAS = "None", LAPACK = "None", PATH = "C:\\msys64\\mingw64\\bin;${PATH}" }
+environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch -O2", CFLAGS = "-O2", CXXFLAGS = "-O2", LDFLAGS = "-Wl,--allow-multiple-definition", OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1", BLAS = "None", LAPACK = "None", PATH = "C:\\msys64\\ucrt64\\bin;${PATH}" }
 before-build = [
     "echo === Windows Static Build Strategy ===",
     "pip install delvewheel -q",
     "pip install ninja -q",
     "echo Installing latest MSYS2 toolchain...",
     "C:\\msys64\\usr\\bin\\pacman.exe -Syu --noconfirm",
-    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-openblas mingw-w64-x86_64-arpack",
+    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-ucrt-x86_64-gcc-fortran mingw-w64-ucrt-x86_64-openblas mingw-w64-ucrt-x86_64-arpack",
     "echo Verifying toolchain...",
     "gfortran --version",
     "gcc --version",
     "echo Checking for OpenBLAS libraries...",
-    "dir C:\\msys64\\mingw64\\lib\\*openblas*.a",
+    "dir C:\\msys64\\ucrt64\\lib\\*openblas*.a",
     "echo [OK] Latest static build toolchain ready"
 ]
 repair-wheel-command = [
-    "delvewheel repair --add-path C:\\msys64\\mingw64\\bin -w {dest_dir} {wheel}",
+    "delvewheel repair --add-path C:\\msys64\\ucrt64\\bin -w {dest_dir} {wheel}",
     "echo === Final wheel contents ===",
     "python -c \"from pathlib import Path; import zipfile; d=Path(r'{dest_dir}'); w=next(d.glob('*.whl')); z=zipfile.ZipFile(w); [print(f'{i.filename:<60} {i.file_size:>10} bytes') for i in z.infolist()]; print(f'Total files: {len(z.infolist())}, Total size: {sum(i.file_size for i in z.infolist()):,} bytes')\""
-] 
+]
