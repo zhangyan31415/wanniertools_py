@@ -723,6 +723,8 @@ jobs:
             $single_output = wt-py.exe 2>&1 | Out-String
             $single_exit_code = $LASTEXITCODE
             Write-Host "Single-core exit code: $single_exit_code"
+            Write-Host "Full output:"
+            Write-Host $single_output
 
             if ($single_exit_code -ne 0) {
               Write-Host "[ERROR] Windows串行测试失败，退出码: $single_exit_code"
