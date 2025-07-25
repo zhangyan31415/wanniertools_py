@@ -100,15 +100,7 @@ environment = {}
 # Windows特定配置
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
-environment = { 
-    FC = "gfortran", 
-    CC = "gcc", 
-    CXX = "g++", 
-    FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", 
-    OPENBLAS_NUM_THREADS = "1", 
-    OMP_NUM_THREADS = "1",
-    PATH = "C:\\msys64\\mingw64\\bin;${PATH}"
-}
+environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1", PATH = "C:\\msys64\\mingw64\\bin;${PATH}" }
 before-build = [
     "echo Installing Windows wheels without MPI",
     "pip install delvewheel -q",
