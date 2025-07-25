@@ -2,6 +2,7 @@
 requires = [
     "setuptools", 
     "wheel", 
+    "numpy", 
     "meson>=0.64.0",        #build-time only
     "ninja",                #build-time only
     "meson-python>=0.13.0"  #build-time only
