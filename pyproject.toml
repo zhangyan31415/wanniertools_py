@@ -100,12 +100,22 @@ environment = {}
 # Windows特定配置
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
-environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1" }
+environment = { 
+    FC = "gfortran", 
+    CC = "gcc", 
+    CXX = "g++", 
+    FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch", 
+    OPENBLAS_NUM_THREADS = "1", 
+    OMP_NUM_THREADS = "1",
+    PATH = "C:\\msys64\\mingw64\\bin;${PATH}"
+}
 before-build = [
     "echo Installing Windows wheels without MPI",
     "pip install delvewheel -q",
     "echo Installing MSYS2 gfortran-compatible libraries...",
     "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-openblas",
+    "echo Verifying OpenBLAS installation...",
+    "dir C:\\msys64\\mingw64\\bin\\libopenblas*.dll",
     "echo [OK] Serial build configured."
 ]
-repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}" 
+repair-wheel-command = "delvewheel repair --add-path C:\\msys64\\mingw64\\bin -w {dest_dir} {wheel}" 
