@@ -106,7 +106,7 @@ before-build = [
     "pip install delvewheel -q",
     "pip install ninja -q",
     "echo Installing minimal MSYS2 toolchain...",
-    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-gcc mingw-w64-x86_64-openblas mingw-w64-x86_64-arpack",
+    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-openblas",
     "echo Verifying toolchain...",
     "gfortran --version",
     "gcc --version", 
