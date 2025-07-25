@@ -101,7 +101,7 @@ environment = {}
 # Windows特定配置 - 静态链接策略避免DLL冲突
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
-environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch -static-libgfortran -static-libgcc -O2", CFLAGS = "-static-libgcc -O2", CXXFLAGS = "-static-libgcc -static-libstdc++ -O2", LDFLAGS = "-static-libgfortran -static-libgcc -Wl,--allow-multiple-definition", OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1", BLAS = "None", LAPACK = "None", PATH = "C:\\msys64\\mingw64\\bin;${PATH}" }
+environment = { FC = "gfortran", CC = "gcc", CXX = "g++", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch -O2", CFLAGS = "-O2", CXXFLAGS = "-O2", LDFLAGS = "-Wl,--allow-multiple-definition", OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1", BLAS = "None", LAPACK = "None", PATH = "C:\\msys64\\mingw64\\bin;${PATH}" }
 before-build = [
     "echo === Windows Static Build Strategy ===",
     "pip install delvewheel -q",
@@ -112,10 +112,6 @@ before-build = [
     "echo Verifying toolchain...",
     "gfortran --version",
     "gcc --version",
-    "echo Cleaning potential DLL conflicts...",
-    "if exist C:\\msys64\\mingw64\\bin\\libgcc_s_seh-1.dll del /f /q C:\\msys64\\mingw64\\bin\\libgcc_s_seh-1.dll",
-    #"if exist C:\\msys64\\mingw64\\bin\\libgomp-1.dll del /f /q C:\\msys64\\mingw64\\bin\\libgomp-1.dll",
-    #"if exist C:\\msys64\\mingw64\\bin\\libwinpthread-1.dll del /f /q C:\\msys64\\mingw64\\bin\\libwinpthread-1.dll",
     "echo Checking for OpenBLAS libraries...",
     "dir C:\\msys64\\mingw64\\lib\\*openblas*.a",
     "echo [OK] Latest static build toolchain ready"
