@@ -105,21 +105,18 @@ before-build = [
     "echo === Windows Static Build Strategy ===",
     "pip install delvewheel -q",
     "pip install ninja -q",
-    "echo Installing minimal MSYS2 toolchain...",
-    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-openblas",
+    "echo Installing latest MSYS2 toolchain...",
+    "C:\\msys64\\usr\\bin\\pacman.exe -Syu --noconfirm",
+    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-x86_64-gcc-fortran mingw-w64-x86_64-gcc mingw-w64-x86_64-openblas mingw-w64-x86_64-arpack",
     "echo Verifying toolchain...",
     "gfortran --version",
-    "gcc --version", 
+    "gcc --version",
+    "echo Cleaning potential DLL conflicts...",
+    "if exist C:\\msys64\\mingw64\\bin\\libgcc_s_seh-1.dll del /f /q C:\\msys64\\mingw64\\bin\\libgcc_s_seh-1.dll",
+    "if exist C:\\msys64\\mingw64\\bin\\libgomp-1.dll del /f /q C:\\msys64\\mingw64\\bin\\libgomp-1.dll",
+    "if exist C:\\msys64\\mingw64\\bin\\libwinpthread-1.dll del /f /q C:\\msys64\\mingw64\\bin\\libwinpthread-1.dll",
     "echo Checking for OpenBLAS libraries...",
-    "dir C:\\msys64\\mingw64\\lib\\*openblas*.a", 
-
-    # 清理可能冲突的文件
-    "echo Cleaning potential conflict files...",
-    "del /f/q C:\\msys64\\mingw64\\lib\\gcc\\x86_64-w64-mingw32\\*.dll 2>nul || true",
-    "del /f/q C:\\msys64\\mingw64\\bin\\libgcc*.dll 2>nul || true",
-    "del /f/q C:\\msys64\\mingw64\\bin\\libgomp*.dll 2>nul || true",
-    "del /f/q C:\\msys64\\mingw64\\bin\\libwinpthread*.dll 2>nul || true",
-
-    "echo [OK] Minimal static build toolchain ready"
+    "dir C:\\msys64\\mingw64\\lib\\*openblas*.a",
+    "echo [OK] Latest static build toolchain ready"
 ]
-repair-wheel-command = "delvewheel repair --add-path C:\\msys64\\mingw64\\bin -w {dest_dir} {wheel}" 
+repair-wheel-command = "delvewheel repair --add-path C:\\msys64\\mingw64\\bin --no-dll libgcc_s_seh-1.dll --no-dll libwinpthread-1.dll -w {dest_dir} {wheel}" 
