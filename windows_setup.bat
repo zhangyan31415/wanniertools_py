@@ -72,15 +72,19 @@ if exist "%MSMPI_INC%\mpi.h" (
   rem Try different possible Fortran source file names
   if exist mpi.f90 (
     gfortran -c -cpp -fallow-invalid-boz -fno-range-check -D_WIN64 "-DINT_PTR_KIND()=8" mpi.f90
-  ) else if exist mpi.F90 (
-    gfortran -c -cpp -fallow-invalid-boz -fno-range-check -D_WIN64 "-DINT_PTR_KIND()=8" mpi.F90
-  ) else if exist mpif.h (
-    rem If no .f90 file, skip mpi.mod generation and use mpif.h instead
-    echo No mpi.f90 found, will use mpif.h for Fortran compilation
-    goto skip_mod_generation
   ) else (
-    echo [WARNING] No Fortran MPI source file found. Skipping mpi.mod generation.
-    goto skip_mod_generation
+    if exist mpi.F90 (
+      gfortran -c -cpp -fallow-invalid-boz -fno-range-check -D_WIN64 "-DINT_PTR_KIND()=8" mpi.F90
+    ) else (
+      if exist mpif.h (
+        rem If no .f90 file, skip mpi.mod generation and use mpif.h instead
+        echo No mpi.f90 found, will use mpif.h for Fortran compilation
+        goto skip_mod_generation
+      ) else (
+        echo [WARNING] No Fortran MPI source file found. Skipping mpi.mod generation.
+        goto skip_mod_generation
+      )
+    )
   )
   
   if exist mpi.mod (
