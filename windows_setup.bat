@@ -63,8 +63,9 @@ rem Copy MPI headers to MSYS2 include path
 if not exist "%MSMPI_INC%\mpi.h" goto mpi_headers_not_found
 
 echo Copying MPI headers to C:\msys64\ucrt64\include
-dir -R "%MSMPI_INC%"
 xcopy /E /Y "%MSMPI_INC%" C:\msys64\ucrt64\include\ >nul
+rem Copy x64-specific headers to the main include directory for easier access
+xcopy /Y "%MSMPI_INC%\x64\*" C:\msys64\ucrt64\include\ >nul 2>&1
   
 rem Create Fortran MPI module file (mpi.mod)
 echo Generating mpi.mod for GFortran...
