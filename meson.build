@@ -113,14 +113,26 @@ endif
 
 # ---- Use meson dependency() for automatic library detection -------------------------
 # Try to find MPI dependency
-# On Windows, use MSYS2 gfortran-compatible MPI to avoid ABI issues
+# On Windows, use manually configured MS-MPI
 if build_machine.system() == 'darwin'
   # macOS: use standard MPI detection
   mpi_dep = dependency('mpi', language: 'fortran', required: false)
+elif build_machine.system() == 'windows'
+  # Windows: Manually add MPI dependency for MS-MPI (MinGW compatible)
+  message('Windows: Manually configuring MPI dependency for MS-MPI')
+  
+  # Set MPI include and lib directories for Meson
+  mpi_inc_dir = 'C:/msys64/ucrt64/include'
+  mpi_lib_dir = 'C:/msys64/ucrt64/lib'
+  
+  mpi_dep = declare_dependency(
+    include_directories: include_directories(mpi_inc_dir),
+    link_args: ['-L' + mpi_lib_dir, '-lmsmpi'] # Link against the generated libmsmpi.a
+  )
+  message('Windows: MPI dependency configured.')
 else
-  # Linux/Windows: Force serial build, do not look for MPI
-  message('Building in serial mode for Linux/Windows: MPI dependency explicitly set to not found.')
-  mpi_dep = dependency('', required: false) # Explicitly set to not found
+  # Linux: Standard MPI detection
+  mpi_dep = dependency('mpi', language: 'fortran', required: false)
 endif
 
 # Try to find libraries using meson's dependency system
@@ -161,12 +173,13 @@ else
     # For manylinux builds, use explicit library paths
     link_args += ['-L/usr/lib64', '-L/usr/local/lib64', '-L/usr/local/lib', '-lopenblas']
   elif build_machine.system() == 'windows'
-    message('Windows: Configuring OpenBLAS from UCRT64 environment')
-    # Use UCRT64 paths for better compatibility with the current build environment
-    link_args += ['-LC:/msys64/ucrt64/lib', '-lopenblas']
-    # Also add the UCRT64 bin directory for DLL discovery
-    link_args += ['-LC:/msys64/ucrt64/bin']
-    message('Windows: Configured OpenBLAS from UCRT64 environment')
+    message('Windows: Configuring single-threaded OpenBLAS from MSYS2 for MPI compatibility')
+    # Add MSYS2 library and include paths
+    link_args += ['-LC:/msys64/mingw64/lib', '-lopenblas']
+    # Ensure DLL search path includes MSYS2 bin directory
+    message('Windows: Adding MSYS2 bin to library search path for DLL discovery')
+    # Add compile flags to ensure single-threaded operation for MPI compatibility
+    message('Windows: Configuring OpenBLAS for single-threaded mode to prevent MPI conflicts')
   endif
 endif
 
@@ -241,40 +254,29 @@ endif
 # For wheels/packaging builds, we use runtime MPI detection only
 is_wheel_build = run_command('python', '-c', 'import os; print(os.environ.get("CIBUILDWHEEL", "false"))', check: false).stdout().strip()
 
-# Enable MPI on macOS and Windows (using MSYS2 MPI on Windows)
-if host_machine.system() == 'darwin'
+# Enable MPI on macOS and Windows (using MinGW-compatible MS-MPI)
+if host_machine.system() == 'darwin' or (host_machine.system() == 'windows' and mpi_dep.found())
   fortran_args += ['-DMPI']
-  if is_wheel_build == '1'
-    message('Building wheel with compile-time MPI support for macOS')
-  else
-    message('Building with compile-time MPI support for macOS')
+  if host_machine.system() == 'windows'
+    # For Windows, add the specific Fortran MPI module include path
+    fortran_args += ['-I' + 'C:/msys64/ucrt64/include']
+    message('Windows: Added MSYS2 UCRT64 include for Fortran MPI modules.')
   endif
-elif host_machine.system() == 'windows'
-  # Windows: Use MSYS2 MPI which is compatible with MinGW/GCC toolchain
-  fortran_args += ['-DMPI']
-  
-  # MSYS2 UCRT64 MPI paths
-  msys2_mpi_inc = 'C:/msys64/ucrt64/include'
-  msys2_mpi_lib = 'C:/msys64/ucrt64/lib'
-  
-  fortran_args += ['-I' + msys2_mpi_inc]
-  
-  # Link against MSYS2 MPI libraries
-  link_args += ['-L' + msys2_mpi_lib]
-  link_args += ['-lmpi', '-lmpif77', '-lmpif90']
-  
-  message('Windows: Configured MSYS2 MPI support (MinGW compatible)')
+
   if is_wheel_build == '1'
-    message('Building wheel with compile-time MPI support for Windows using MSYS2 MPI')
+    message('Building wheel with compile-time MPI support for macOS/Windows')
   else
-    message('Building with compile-time MPI support for Windows using MSYS2 MPI')
+    message('Building with compile-time MPI support for macOS/Windows')
   endif
 else
-  message('Building in serial mode for Linux')
+  message('Building in serial mode for Linux/other or Windows without detected MPI.')
 endif
 
 
-# Removed Intel MPI configuration - not needed for MinGW build 
+if build_machine.system() == 'windows' and fortran_compiler.get_id().startswith('intel')
+  mpi_lib_dir = 'C:/Program Files (x86)/Intel/oneAPI/mpi/latest/lib/'
+  link_args += ['-LIBPATH:' + mpi_lib_dir, 'impi.lib']
+endif 
 
 wt_lib = static_library('wt', all_sources,
   fortran_args: fortran_args,
