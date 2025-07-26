@@ -45,6 +45,7 @@ set "SYSTEMROOT_DLL=C:\Windows\System32"
 if not exist "%MSMPI_LIB64%\msmpi.lib" goto msmpi_lib_not_found
 
 echo Generating libmsmpi.a for MinGW...
+C:
 cd C:\msys64\ucrt64\lib
 copy "%MSMPI_LIB64%\msmpi.lib" . >nul
 copy "%SYSTEMROOT_DLL%\msmpi.dll" . >nul
@@ -53,11 +54,13 @@ dlltool -d msmpi.def -l libmsmpi.a -D msmpi.dll
 del msmpi.lib msmpi.dll msmpi.def
 
 rem Verify libmsmpi.a was created successfully
-if exist libmsmpi.a (
+if exist C:\msys64\ucrt64\lib\libmsmpi.a (
     echo Created libmsmpi.a in C:\msys64\ucrt64\lib
-    dir libmsmpi.a
+    dir C:\msys64\ucrt64\lib\libmsmpi.a
 ) else (
-    echo [ERROR] Failed to create libmsmpi.a
+    echo [ERROR] Failed to create libmsmpi.a in C:\msys64\ucrt64\lib
+    echo Current directory contents:
+    dir libmsmpi.a 2>nul || echo No libmsmpi.a in current directory
 )
 goto msmpi_lib_done
 
