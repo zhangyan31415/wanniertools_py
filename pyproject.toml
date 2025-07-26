@@ -105,32 +105,38 @@ environment = { MAKEFLAGS = "-j$(sysctl -n hw.ncpu)", NINJA_STATUS = "[%f/%t] " 
 # Windows特定配置
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
-environment = { FC = "C:\\\\msys64\\\\ucrt64\\\\bin\\\\gfortran.exe", CC = "C:\\\\msys64\\\\ucrt64\\\\bin\\\\gcc.exe", CXX = "C:\\\\msys64\\\\ucrt64\\\\bin\\\\g++.exe", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch -O2 -IC:\\\\msys64\\\\ucrt64\\\\include", CFLAGS = "-O2 -IC:\\\\msys64\\\\ucrt64\\\\include", CXXFLAGS = "-O2 -IC:\\\\msys64\\\\ucrt64\\\\include", LDFLAGS = "-LC:\\\\msys64\\\\ucrt64\\\\lib -Wl,--allow-multiple-definition -lmsmpi", OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1", BLAS = "None", LAPACK = "None", PATH = "C:\\\\msys64\\\\ucrt64\\\\bin;${PATH}" }
+environment = { FC = "C:\\\\msys64\\\\ucrt64\\\\bin\\\\gfortran.exe", CC = "C:\\\\msys64\\\\ucrt64\\\\bin\\\\gcc.exe", CXX = "C:\\\\msys64\\\\ucrt64\\\\bin\\\\g++.exe", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch -O2", CFLAGS = "-O2", CXXFLAGS = "-O2", LDFLAGS = "-Wl,--allow-multiple-definition -lmsmpi", OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1", BLAS = "None", LAPACK = "None", PATH = "C:\\\\msys64\\\\ucrt64\\\\bin;${PATH}" }
 before-build = [
     "echo === Windows Static Build Strategy with MPI Support ===",
     "pip install delvewheel -q",
     "pip install ninja -q",
-    "echo Installing latest MSYS2 UCRT64 toolchain with MPI...",
+
+    "echo Installing latest MSYS2 UCRT64 toolchain...",
     "C:\\msys64\\usr\\bin\\pacman.exe -Syu --noconfirm",
     "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-gcc-fortran mingw-w64-ucrt-x86_64-openblas mingw-w64-ucrt-x86_64-arpack",
-    "echo Verifying toolchain and MPI installation...",
-    "powershell -Command \"Invoke-WebRequest 'https://go.microsoft.com/fwlink/?LinkID=389556' -OutFile msmpisetup.exe\"",
-    "echo Installing MS‑MPI v9.0.1 runtime silently...",
-    "msmpisetup.exe /quiet /norestart",
-    "echo Verifying MS‑MPI runtime DLL…",
-    "dir \"C:\\Program Files\\Microsoft MPI\\Bin\\msmpi.dll\" 2>nul || echo ERROR: msmpi.dll missing",
 
+    "echo === Installing Microsoft MPI ===",
+    "curl -L -o msmpisetup.exe https://aka.ms/msmpisetup",
+    "start /wait msmpisetup.exe /quiet /norestart",
+    "del msmpisetup.exe",
+    "echo === Microsoft MPI Installation Complete ===",
+
+    "echo === Setting up build environment variables for MPI ===",
+    "set \"MPI_ROOT_PATH=C:\\Program Files\\Microsoft MPI\"",
+    "set \"PATH=%MPI_ROOT_PATH%\\Bin;%PATH%\"",
+    "set \"CPATH=%MPI_ROOT_PATH%\\Include\"",
+    "set \"LIBRARY_PATH=%MPI_ROOT_PATH%\\Lib\\x64;C:\\msys64\\ucrt64\\lib\"",
+
+    "echo Verifying toolchain and MPI installation...",
     "gfortran --version",
     "gcc --version",
     "echo Checking MPI installation...",
-    "where mpiexec 2>nul || echo MPI not found in PATH",
-    "dir C:\\msys64\\ucrt64\\bin\\*mpi* 2>nul || echo No MPI executables found",
-    "dir C:\\msys64\\ucrt64\\lib\\*mpi* 2>nul || echo No MPI libraries found",
-    "dir C:\\msys64\\ucrt64\\include\\mpi.h 2>nul || echo MPI header not found",
-    "dir C:\\msys64\\ucrt64\\include\\mpif.h 2>nul || echo MPI Fortran header not found",
-    "echo Parallel build configuration:",
-    "echo Available CPU cores: %NUMBER_OF_PROCESSORS%",
-    "echo MAKEFLAGS: %MAKEFLAGS%",
+    "where mpiexec",
+    "dir \"%MPI_ROOT_PATH%\\Bin\\msmpi.dll\"",
+    "dir \"%MPI_ROOT_PATH%\\Include\\mpi.h\"",
+    "dir \"%MPI_ROOT_PATH%\\Include\\mpif.h\"",
+    "dir \"%MPI_ROOT_PATH%\\Lib\\x64\\msmpi.lib\"",
+
     "echo Checking for OpenBLAS libraries...",
     "dir C:\\msys64\\ucrt64\\lib\\*openblas*.a",
     "echo [OK] Latest static build toolchain ready with MPI and parallel support"
