@@ -281,6 +281,13 @@ jobs:
               fi
             done
             
+            # 复制OpenMPI MCA组件 so 文件 (lib/openmpi)
+            if [ -d "/usr/lib64/openmpi/lib/openmpi" ]; then
+              echo "📦 Copying OpenMPI MCA component .so files..."
+              mkdir -p src/wannier_tools/internal_mpi/linux_x86_64/lib/openmpi
+              cp /usr/lib64/openmpi/lib/openmpi/*.so* src/wannier_tools/internal_mpi/linux_x86_64/lib/openmpi/ 2>/dev/null || true
+            fi
+            
             # 复制OpenMPI配置文件和帮助文件
             echo "📦 Copying OpenMPI configuration files..."
             SHARE_DIRS="/usr/share/openmpi /usr/lib64/openmpi/share"
@@ -449,6 +456,11 @@ jobs:
               fi
               if [ -d "$MPI_LIB_SRC" ]; then
                 cp "$MPI_LIB_SRC"/* "$temp_dir/wannier_tools/internal_mpi/linux_x86_64/lib/" 2>/dev/null || echo "No lib files"
+                # 复制MCA组件目录
+                if [ -d "$MPI_LIB_SRC/openmpi" ]; then
+                  mkdir -p "$temp_dir/wannier_tools/internal_mpi/linux_x86_64/lib/openmpi"
+                  cp "$MPI_LIB_SRC/openmpi"/*.so* "$temp_dir/wannier_tools/internal_mpi/linux_x86_64/lib/openmpi/" 2>/dev/null || true
+                fi
               else
                 echo "⚠️  $MPI_LIB_SRC 不存在"
               fi
