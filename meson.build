@@ -247,7 +247,9 @@ if host_machine.system() == 'darwin' or host_machine.system() == 'windows'
   fortran_args += ['-DMPI']
   if host_machine.system() == 'windows'
     mpi_incdir = 'C:/Program Files (x86)/Microsoft SDKs/MPI/Include'
+    mpi_incdir_x64 = 'C:/Program Files (x86)/Microsoft SDKs/MPI/Include/x64'
     fortran_args += ['-I' + mpi_incdir]
+    fortran_args += ['-I' + mpi_incdir_x64]
   endif
   if is_wheel_build == '1'
     message('Building wheel with compile-time MPI support for macOS')
