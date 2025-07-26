@@ -19,26 +19,38 @@ gfortran --version
 gcc --version
 
 echo === Installing Microsoft MPI ===
-powershell -Command "Invoke-WebRequest 'https://download.microsoft.com/download/a/5/2/a5207ca5-1203-491a-8fb8-906fd68ae623/msmpisetup.exe' -OutFile msmpisetup.exe"
-powershell -Command "Invoke-WebRequest 'https://download.microsoft.com/download/a/5/2/a5207ca5-1203-491a-8fb8-906fd68ae623/msmpisdk.msi' -OutFile msmpisdk.msi"
+powershell -Command "Invoke-WebRequest 'https://github.com/microsoft/Microsoft-MPI/releases/download/v10.1.1/msmpisetup.exe' -OutFile msmpisetup.exe"
+powershell -Command "Invoke-WebRequest 'https://github.com/microsoft/Microsoft-MPI/releases/download/v10.1.1/msmpisdk.msi' -OutFile msmpisdk.msi"
 
-start /wait msmpisetup.exe -unattend
+start /wait msmpisetup.exe -unattend -force
 start /wait msiexec /i msmpisdk.msi /quiet /norestart
 del msmpisetup.exe msmpisdk.msi
 
 echo === Checking for MPI files after installation ===
-dir C:\Windows\System32\*mpi*.dll 2>nul || echo No MPI DLLs in System32
-dir "C:\Program Files\Microsoft MPI\Bin\*.dll" 2>nul || echo No MPI DLLs in Program Files
-dir "C:\Program Files (x86)\Microsoft MPI\Bin\*.dll" 2>nul || echo No MPI DLLs in Program Files (x86)
-where mpiexec 2>nul || echo mpiexec not found in PATH
+echo -- System32 MPI files --
+dir C:\Windows\System32\msmpi* 2>nul || echo No MPI files in System32
+echo -- Program Files MPI files --
+dir "C:\Program Files\Microsoft MPI\Bin\*.*" 2>nul || echo No MPI files in Program Files
+echo -- Program Files (x86) MPI files --
+dir "C:\Program Files (x86)\Microsoft MPI\Bin\*.*" 2>nul || echo No MPI files in Program Files (x86)
+echo -- SDK files --
+dir "C:\Program Files (x86)\Microsoft SDKs\MPI\*.*" 2>nul || echo No SDK files found
 
 echo === Setting up final environment ===
-set "PATH=C:\msys64\ucrt64\bin;C:\Program Files\Microsoft MPI\Bin;%PATH%"
+:: Add all possible MPI locations to PATH
+set "PATH=C:\msys64\ucrt64\bin;%PATH%"
+set "PATH=C:\Program Files\Microsoft MPI\Bin;%PATH%"
+set "PATH=C:\Program Files (x86)\Microsoft MPI\Bin;%PATH%"
+set "PATH=C:\Windows\System32;%PATH%"
+
+:: Configure development paths
 set "CPATH=C:\Program Files (x86)\Microsoft SDKs\MPI\Include"
 set "LIBRARY_PATH=C:\Program Files (x86)\Microsoft SDKs\MPI\Lib\x64;C:\msys64\ucrt64\lib"
 
 echo Final verification...
+where mpiexec || echo mpiexec not found
+where msmpi.dll || echo msmpi.dll not found
 gfortran --version
 gcc --version
 
-echo === Setup Complete === 
+echo === Setup Complete ===
