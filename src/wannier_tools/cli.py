@@ -177,7 +177,6 @@ Note: For parallel computation, make sure MPI is installed:
                             print(f"[DEBUG] Set LD_LIBRARY_PATH to: {env['LD_LIBRARY_PATH']}")
                             print(f"[DEBUG] Checking if lib directory exists: {(mpi_root / 'lib').exists()}")
                             if (mpi_root / 'lib').exists():
-                                import os
                                 print(f"[DEBUG] Libraries in {lib_path}:")
                                 for lib in os.listdir(mpi_root / 'lib'):
                                     print(f"  - {lib}")
