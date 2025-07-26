@@ -86,23 +86,32 @@ Note: For parallel computation, make sure MPI is installed:
             plat_dir = 'linux_x86_64'
         elif sysname == 'darwin':
             plat_dir = 'macos_arm64'
+        elif sysname == 'windows':
+            plat_dir = 'windows_amd64'
         else:
             plat_dir = None
 
         mpirun_exe = None
         if plat_dir:
             pkg_root = Path(__file__).resolve().parent
-            candidate = pkg_root / 'internal_mpi' / plat_dir / 'bin' / 'mpirun'
+            if sysname == 'windows':
+                # Windows uses mpiexec.exe
+                candidate = pkg_root / 'internal_mpi' / plat_dir / 'bin' / 'mpiexec.exe'
+            else:
+                # Linux/macOS use mpirun
+                candidate = pkg_root / 'internal_mpi' / plat_dir / 'bin' / 'mpirun'
             if candidate.is_file():
                 mpirun_exe = str(candidate)
 
-        # Fallback to system mpirun if bundled is not found (Linux/macOS only)
-        if mpirun_exe is None and sysname != 'windows':
-            mpirun_exe = shutil.which('mpirun') or shutil.which('mpiexec')
+        # Fallback to system mpirun/mpiexec if bundled is not found
+        if mpirun_exe is None:
+            if sysname == 'windows':
+                mpirun_exe = shutil.which('mpiexec.exe') or shutil.which('mpiexec')
+            else:
+                mpirun_exe = shutil.which('mpirun') or shutil.which('mpiexec')
 
         # On Linux/macOS, if an mpirun is found, use it
-        if mpirun_exe is not None and sysname != 'windows':
-                
+        if mpirun_exe is not None:
             new_cmd = [mpirun_exe, '-np', str(args.np), sys.executable, '-m', 'wannier_tools.cli', '--no-spawn']
 
             # propagate user-visible CLI args (except -n/--np)
@@ -112,54 +121,52 @@ Note: For parallel computation, make sure MPI is installed:
             if args.sample:
                 new_cmd.append('--sample')
 
-            # Set up environment for bundled OpenMPI
+            # Set up environment for bundled MPI
             env = os.environ.copy()
-            if plat_dir and mpirun_exe.endswith(f'internal_mpi/{plat_dir}/bin/mpirun'):
-                pkg_root = Path(__file__).resolve().parent
-                mpi_root = pkg_root / 'internal_mpi' / plat_dir
-                
-                # Set OpenMPI prefix and data directory
-                env['OPAL_PREFIX'] = str(mpi_root)
-                env['OPAL_PKGDATADIR'] = str(mpi_root / 'share' / 'openmpi')
-                env['OPAL_DATADIR'] = str(mpi_root / 'share')
-                
-                # Update library path
-                lib_path = str(mpi_root / 'lib')
-                if sysname.startswith('linux'):
-                    env['LD_LIBRARY_PATH'] = f"{lib_path}:{env.get('LD_LIBRARY_PATH', '')}"
-                elif sysname == 'darwin':
-                    env['DYLD_LIBRARY_PATH'] = f"{lib_path}:{env.get('DYLD_LIBRARY_PATH', '')}"
+            if plat_dir:
+                is_bundled = False
+                # Check if we are using a bundled MPI executable
+                if sysname == 'windows':
+                    # In TOML strings, backslashes are escaped, but pathlib handles it.
+                    # Here we construct path with forward slashes for string matching consistency.
+                    bundled_path_str = (Path('internal_mpi') / plat_dir / 'bin' / 'mpiexec.exe').as_posix()
+                    if mpirun_exe.replace('\\', '/').endswith(bundled_path_str):
+                        is_bundled = True
+                else:
+                    bundled_path_str = (Path('internal_mpi') / plat_dir / 'bin' / 'mpirun').as_posix()
+                    if mpirun_exe.replace('\\', '/').endswith(bundled_path_str):
+                        is_bundled = True
 
-            os.execvpe(new_cmd[0], new_cmd, env)
-            # exec replaces current process; no return
+                if is_bundled:
+                    pkg_root = Path(__file__).resolve().parent
+                    mpi_root = pkg_root / 'internal_mpi' / plat_dir
+                    
+                    if sysname == 'windows':
+                        # Add bundled bin to PATH for DLLs like msmpi.dll
+                        env['PATH'] = f"{str(mpi_root / 'bin')};{env.get('PATH', '')}"
+                        print(f"[INFO] Using bundled MS-MPI. Added to PATH: {mpi_root / 'bin'}")
+                    else:
+                        # Set OpenMPI environment variables for Linux/macOS
+                        env['OPAL_PREFIX'] = str(mpi_root)
+                        env['OPAL_PKGDATADIR'] = str(mpi_root / 'share' / 'openmpi')
+                        env['OPAL_DATADIR'] = str(mpi_root / 'share')
+                        
+                        # Update library path
+                        lib_path = str(mpi_root / 'lib')
+                        if sysname.startswith('linux'):
+                            env['LD_LIBRARY_PATH'] = f"{lib_path}:{env.get('LD_LIBRARY_PATH', '')}"
+                        elif sysname == 'darwin':
+                            env['DYLD_LIBRARY_PATH'] = f"{lib_path}:{env.get('DYLD_LIBRARY_PATH', '')}"
+
+            try:
+                # Use subprocess.run for cross-platform compatibility
+                result = subprocess.run(new_cmd, env=env)
+                sys.exit(result.returncode)
+            except (FileNotFoundError, PermissionError) as e:
+                print(f"[ERROR] Failed to execute {new_cmd[0]}: {e}")
+                sys.exit(1)
         
-        # Windows fallback: use multiprocessing
-        elif sysname == 'windows':
-            print("[INFO] No mpirun found on Windows, using multiprocessing fallback")
-            import multiprocessing as mp
-            
-            def run_with_rank(rank, input_file, output_file):
-                """Run WannierTools with specific rank"""
-                env = os.environ.copy()
-                env['WT_RANK'] = str(rank)
-                env['WT_SIZE'] = str(args.np)
-                print(f"[INFO] Starting process {rank}/{args.np}")
-                return run(input_file=input_file, output_file=output_file)
-            
-            # Start processes
-            processes = []
-            for rank in range(args.np):
-                p = mp.Process(target=run_with_rank, args=(rank, args.input, args.output))
-                p.start()
-                processes.append(p)
-            
-            # Wait for all processes
-            for p in processes:
-                p.join()
-            
-            return 0
-        
-        # Fallback for Linux/macOS if no mpirun was found
+        # Fallback for all systems if no mpirun/mpiexec was found
         else:
             print(f"[ERROR] Requested np > 1 on {sysname} but no mpirun/mpiexec found (bundled or system).\n"
                   "Falling back to serial execution.")
