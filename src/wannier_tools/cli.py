@@ -101,26 +101,28 @@ Note: For parallel computation, make sure MPI is installed:
                 # Linux/macOS use mpirun
                 candidate = pkg_root / 'internal_mpi' / plat_dir / 'bin' / 'mpirun'
             
-            print(f"[DEBUG] Looking for bundled MPI at: {candidate}")
+            #
+            # print(f"[DEBUG] Looking for bundled MPI at: {candidate}")
             if candidate.is_file():
                 mpirun_exe = str(candidate)
-                print(f"[DEBUG] Found bundled MPI: {mpirun_exe}")
+                # print(f"[DEBUG] Found bundled MPI: {mpirun_exe}")
             else:
-                print(f"[DEBUG] Bundled MPI not found. Checking directory contents...")
+                # print(f"[DEBUG] Bundled MPI not found. Checking directory contents...")
                 mpi_dir = pkg_root / 'internal_mpi'
                 if mpi_dir.exists():
-                    print(f"[DEBUG] internal_mpi directory exists: {list(mpi_dir.iterdir())}")
+                    # print(f"[DEBUG] internal_mpi directory exists: {list(mpi_dir.iterdir())}")
                     if (mpi_dir / plat_dir).exists():
-                        print(f"[DEBUG] Platform directory exists: {list((mpi_dir / plat_dir).iterdir())}")
+                        # print(f"[DEBUG] Platform directory exists: {list((mpi_dir / plat_dir).iterdir())}")
                         bin_dir = mpi_dir / plat_dir / 'bin'
                         if bin_dir.exists():
-                            print(f"[DEBUG] Bin directory exists: {list(bin_dir.iterdir())}")
+                            # print(f"[DEBUG] Bin directory exists: {list(bin_dir.iterdir())}")
+                            pass # No more need to print contents
                         else:
-                            print(f"[DEBUG] Bin directory does not exist: {bin_dir}")
+                            pass # print(f"[DEBUG] Bin directory does not exist: {bin_dir}")
                     else:
-                        print(f"[DEBUG] Platform directory does not exist: {mpi_dir / plat_dir}")
+                        pass # print(f"[DEBUG] Platform directory does not exist: {mpi_dir / plat_dir}")
                 else:
-                    print(f"[DEBUG] internal_mpi directory does not exist: {mpi_dir}")
+                    pass # print(f"[DEBUG] internal_mpi directory does not exist: {mpi_dir}")
 
         # Fallback to system mpirun/mpiexec if bundled is not found
         if mpirun_exe is None:
@@ -168,7 +170,7 @@ Note: For parallel computation, make sure MPI is installed:
                     if sysname == 'windows':
                         # Add bundled bin to PATH for DLLs like msmpi.dll
                         env['PATH'] = f"{str(mpi_root / 'bin')};{env.get('PATH', '')}"
-                        print(f"[INFO] Using bundled MS-MPI. Added to PATH: {mpi_root / 'bin'}")
+                        # print(f"[INFO] Using bundled MS-MPI. Added to PATH: {mpi_root / 'bin'}")
                     else:
                         # Set OpenMPI environment variables for Linux/macOS
                         env['OPAL_PREFIX'] = str(mpi_root)
@@ -179,17 +181,18 @@ Note: For parallel computation, make sure MPI is installed:
                         lib_path = str(mpi_root / 'lib')
                         if sysname.startswith('linux'):
                             env['LD_LIBRARY_PATH'] = f"{lib_path}:{env.get('LD_LIBRARY_PATH', '')}"
-                            print(f"[DEBUG] Set LD_LIBRARY_PATH to: {env['LD_LIBRARY_PATH']}")
-                            print(f"[DEBUG] Checking if lib directory exists: {(mpi_root / 'lib').exists()}")
+                            # print(f"[DEBUG] Set LD_LIBRARY_PATH to: {env['LD_LIBRARY_PATH']}")
+                            # print(f"[DEBUG] Checking if lib directory exists: {(mpi_root / 'lib').exists()}")
                             if (mpi_root / 'lib').exists():
-                                print(f"[DEBUG] Libraries in {lib_path}:")
-                                for lib in os.listdir(mpi_root / 'lib'):
-                                    print(f"  - {lib}")
+                                # print(f"[DEBUG] Libraries in {lib_path}:")
+                                # for lib in os.listdir(mpi_root / 'lib'):
+                                #     print(f"  - {lib}")
+                                pass # No more need to print contents
                         elif sysname == 'darwin':
                             env['DYLD_LIBRARY_PATH'] = f"{lib_path}:{env.get('DYLD_LIBRARY_PATH', '')}"
-                            print(f"[DEBUG] Set DYLD_LIBRARY_PATH to: {env['DYLD_LIBRARY_PATH']}")
+                            # print(f"[DEBUG] Set DYLD_LIBRARY_PATH to: {env['DYLD_LIBRARY_PATH']}")
                         
-                        print(f"[INFO] Using bundled OpenMPI at: {mpi_root}")
+                        # print(f"[INFO] Using bundled OpenMPI at: {mpi_root}")
 
             try:
                 # Use subprocess.run for cross-platform compatibility
