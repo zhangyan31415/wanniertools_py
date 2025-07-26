@@ -9,6 +9,8 @@ RUN yum install -y --setopt=keepcache=0 \
         openblas-devel \
         arpack-devel \
         openmpi-devel \
+        zip \
+        unzip \
         && yum clean all -y \
         && rm -rf /var/cache/yum
 

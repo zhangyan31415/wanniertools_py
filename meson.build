@@ -339,14 +339,11 @@ py.install_sources([
 )
 
 # Install internal_mpi directory (including all MPI runtime files created during CI)
-# Use install_data to ensure all files are properly included
-if fs.exists('src/wannier_tools/internal_mpi')
-  install_subdir('src/wannier_tools/internal_mpi', 
-    install_dir: py.get_install_dir() / 'wannier_tools', 
-    strip_directory: false)
-else
-  message('Warning: internal_mpi directory not found, MPI runtime files will not be bundled')
-endif
+# Install the directory structure to ensure it's available for CI population
+install_subdir('src/wannier_tools/internal_mpi', 
+  install_dir: py.get_install_dir() / 'wannier_tools', 
+  strip_directory: false,
+  install_tag: 'runtime')
 
 # Install examples and other data
 install_subdir('examples', install_dir: py.get_install_dir() / 'wannier_tools', strip_directory: false) 
