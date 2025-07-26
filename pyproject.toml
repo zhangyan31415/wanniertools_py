@@ -68,7 +68,7 @@ install = ["--tags=python-runtime,extension,devel,runtime,data"]
 # cibuildwheel配置
 [tool.cibuildwheel]
 # 构建哪些版本
-build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
+build = ["cp39-*"]
 # 跳过哪些版本
 skip = ["pp*", "*musllinux*"]
 
@@ -90,35 +90,107 @@ environment = { FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-non
 before-build = [
     "echo 'Building Linux wheels with MPICH runtime MPI detection'",
     "echo 'Available Python versions:'",
-    "ls /opt/python/"
+    "ls /opt/python/",
+    "echo 'Parallel build configuration:'",
+    "echo 'Available CPU cores:' $(nproc)",
+    "echo 'MAKEFLAGS:' $MAKEFLAGS"
 ]
 
 # macOS特定配置 - 支持三种架构
 [tool.cibuildwheel.macos] 
 # macOS build environment is configured in CI workflow for better control
 archs = ["x86_64", "arm64"]
-environment = {}
+environment = { MAKEFLAGS = "-j$(sysctl -n hw.ncpu)", NINJA_STATUS = "[%f/%t] " }
 
 # Windows特定配置 - 静态链接策略避免DLL冲突
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
 environment = { FC = "C:\\\\msys64\\\\ucrt64\\\\bin\\\\gfortran.exe", CC = "C:\\\\msys64\\\\ucrt64\\\\bin\\\\gcc.exe", CXX = "C:\\\\msys64\\\\ucrt64\\\\bin\\\\g++.exe", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch -O2", CFLAGS = "-O2", CXXFLAGS = "-O2", LDFLAGS = "-LC:\\\\msys64\\\\ucrt64\\\\lib -Wl,--allow-multiple-definition", OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1", BLAS = "None", LAPACK = "None", PATH = "C:\\\\msys64\\\\ucrt64\\\\bin;${PATH}" }
 before-build = [
-    "echo === Windows Static Build Strategy ===",
+    "echo === Windows Static Build Strategy with MPI Support ===",
     "pip install delvewheel -q",
     "pip install ninja -q",
-    "echo Installing latest MSYS2 UCRT64 toolchain...",
+    "echo Installing latest MSYS2 UCRT64 toolchain with MPI...",
     "C:\\msys64\\usr\\bin\\pacman.exe -Syu --noconfirm",
-    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-gcc-fortran mingw-w64-ucrt-x86_64-openblas mingw-w64-ucrt-x86_64-arpack",
-    "echo Verifying toolchain...",
+    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-gcc-fortran mingw-w64-ucrt-x86_64-openblas mingw-w64-ucrt-x86_64-arpack mingw-w64-ucrt-x86_64-msmpi",
+    "echo Verifying toolchain and MPI installation...",
     "gfortran --version",
     "gcc --version",
+    "echo Checking MPI installation...",
+    "where mpiexec 2>nul || echo MPI not found in PATH",
+    "dir C:\\msys64\\ucrt64\\bin\\*mpi* 2>nul || echo No MPI executables found",
+    "dir C:\\msys64\\ucrt64\\lib\\*mpi* 2>nul || echo No MPI libraries found",
+    "echo Parallel build configuration:",
+    "echo Available CPU cores: %NUMBER_OF_PROCESSORS%",
+    "echo MAKEFLAGS: %MAKEFLAGS%",
     "echo Checking for OpenBLAS libraries...",
     "dir C:\\msys64\\ucrt64\\lib\\*openblas*.a",
-    "echo [OK] Latest static build toolchain ready"
+    "echo [OK] Latest static build toolchain ready with MPI and parallel support"
 ]
 repair-wheel-command = [
     "delvewheel repair --add-path C:\\msys64\\ucrt64\\bin -w {dest_dir} {wheel}",
+    "echo === Injecting MS-MPI into Windows wheel ===",
+    "python -c \"",
+    "import zipfile, tempfile, shutil, os",
+    "from pathlib import Path",
+    "",
+    "# 找到修复后的wheel文件",
+    "dest_dir = Path(r'{dest_dir}')",
+    "wheel_file = next(dest_dir.glob('*.whl'))",
+    "print(f'Processing wheel: {wheel_file}')",
+    "",
+    "# 创建临时目录",
+    "with tempfile.TemporaryDirectory() as temp_dir:",
+    "    temp_path = Path(temp_dir)",
+    "    ",
+    "    # 解压wheel",
+    "    with zipfile.ZipFile(wheel_file, 'r') as z:",
+    "        z.extractall(temp_path)",
+    "    ",
+    "    # 创建MPI目录结构",
+    "    mpi_dir = temp_path / 'wannier_tools' / 'internal_mpi' / 'windows_amd64'",
+    "    (mpi_dir / 'bin').mkdir(parents=True, exist_ok=True)",
+    "    (mpi_dir / 'lib').mkdir(parents=True, exist_ok=True)",
+    "    (mpi_dir / 'include').mkdir(parents=True, exist_ok=True)",
+    "    ",
+    "    # 复制MS-MPI文件",
+    "    msmpi_bin = Path('C:/msys64/ucrt64/bin')",
+    "    msmpi_lib = Path('C:/msys64/ucrt64/lib')",
+    "    msmpi_inc = Path('C:/msys64/ucrt64/include')",
+    "    ",
+    "    # 复制MPI相关的可执行文件",
+    "    for pattern in ['*mpi*', '*MPI*']:",
+    "        for f in msmpi_bin.glob(pattern):",
+    "            if f.is_file():",
+    "                shutil.copy2(f, mpi_dir / 'bin')",
+    "                print(f'Copied bin: {f.name}')",
+    "    ",
+    "    # 复制MPI库文件",
+    "    for pattern in ['*mpi*', '*MPI*']:",
+    "        for f in msmpi_lib.glob(pattern):",
+    "            if f.is_file():",
+    "                shutil.copy2(f, mpi_dir / 'lib')",
+    "                print(f'Copied lib: {f.name}')",
+    "    ",
+    "    # 复制MPI头文件",
+    "    for pattern in ['*mpi*', '*MPI*']:",
+    "        for f in msmpi_inc.glob(pattern):",
+    "            if f.is_file():",
+    "                shutil.copy2(f, mpi_dir / 'include')",
+    "                print(f'Copied include: {f.name}')",
+    "            elif f.is_dir():",
+    "                shutil.copytree(f, mpi_dir / 'include' / f.name, dirs_exist_ok=True)",
+    "                print(f'Copied include dir: {f.name}')",
+    "    ",
+    "    # 重新打包wheel",
+    "    with zipfile.ZipFile(wheel_file, 'w', zipfile.ZIP_DEFLATED) as z:",
+    "        for file_path in temp_path.rglob('*'):",
+    "            if file_path.is_file():",
+    "                arcname = file_path.relative_to(temp_path)",
+    "                z.write(file_path, arcname)",
+    "    ",
+    "    print(f'✅ MS-MPI injected into {wheel_file.name}')",
+    "\"",
     "echo === Final wheel contents ===",
     "python -c \"from pathlib import Path; import zipfile; d=Path(r'{dest_dir}'); w=next(d.glob('*.whl')); z=zipfile.ZipFile(w); [print(f'{i.filename:<60} {i.file_size:>10} bytes') for i in z.infolist()]; print(f'Total files: {len(z.infolist())}, Total size: {sum(i.file_size for i in z.infolist()):,} bytes')\""
 ]

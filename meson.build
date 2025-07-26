@@ -242,8 +242,8 @@ endif
 # For wheels/packaging builds, we use runtime MPI detection only
 is_wheel_build = run_command('python', '-c', 'import os; print(os.environ.get("CIBUILDWHEEL", "false"))', check: false).stdout().strip()
 
-# Enable MPI only on macOS
-if host_machine.system() == 'darwin'
+# Enable MPI on macOS and Windows
+if host_machine.system() == 'darwin' or host_machine.system() == 'windows'
   fortran_args += ['-DMPI']
   if is_wheel_build == '1'
     message('Building wheel with compile-time MPI support for macOS')

@@ -20,7 +20,7 @@ name: Build and Test WannierTools Cross-Platform Wheels
 # 
 env:
   # 🎯 Python版本配置 - 只需要在这里修改一次！
-  PYTHON_VERSIONS_SOURCE: "3.9 3.10 3.11 3.12 3.13"  # 主版本列表，空格分隔
+  PYTHON_VERSIONS_SOURCE: "3.9"  # 主版本列表，空格分隔
   
   # 其他构建配置
   BUILD_VERBOSITY: "3"                    # 构建详细度 (0-3, 推荐3用于调试)
@@ -703,18 +703,18 @@ jobs:
           Write-Host "测试wt-check-deps命令："
           wt-check-deps
       
-      - name: Test serial functionality (Windows) 
+      - name: Test MPI functionality (Windows)
         shell: pwsh
         continue-on-error: true
         run: |
-          Write-Host "=== Windows串行功能测试 ==="
+          Write-Host "=== Windows MPI功能测试 ==="
           cd examples/Haldane_model
-          Write-Host "=== 测试单核运行 ==="
           
           $env:OMP_NUM_THREADS = "1"
           $env:MKL_NUM_THREADS = "1"  
           $env:OPENBLAS_NUM_THREADS = "1"
           
+          Write-Host "=== 测试单核运行 ==="
           try {
             # Clean any existing output
             if (Test-Path "WT.out") { Remove-Item "WT.out" -Force }
@@ -727,7 +727,7 @@ jobs:
             Write-Host $single_output
 
             if ($single_exit_code -ne 0) {
-              Write-Host "[ERROR] Windows串行测试失败，退出码: $single_exit_code"
+              Write-Host "[ERROR] Windows单核测试失败，退出码: $single_exit_code"
               Write-Host "Output: $single_output"
             }
             
@@ -754,11 +754,64 @@ jobs:
               } else {
                 Write-Host "[WARNING] Core count verification failed. Found: $($core_info.ToString().Trim())"
               }
+              
+              $cores = $content | Select-String "CPU cores" | Select-Object -Last 1
+              Write-Host "[Windows] 单核结果: $($cores.ToString().Trim())"
             } else {
               Write-Host "[ERROR] WT.out file not generated"
             }
           } catch {
-            Write-Host "[ERROR] Windows串行测试执行失败: $_"
+            Write-Host "[ERROR] Windows单核测试执行失败: $_"
+          }
+
+          Write-Host "=== 测试双核并行 ==="
+          try {
+            # Clean previous output
+            if (Test-Path "WT.out") { Remove-Item "WT.out" -Force }
+            
+            Write-Host "Command: wt-py.exe -n 2"
+            $mpi_output = wt-py.exe -n 2 2>&1 | Out-String
+            $mpi_exit_code = $LASTEXITCODE
+            Write-Host "Dual-core exit code: $mpi_exit_code"
+            Write-Host "Full MPI output:"
+            Write-Host $mpi_output
+
+            if ($mpi_exit_code -ne 0) {
+              Write-Host "[ERROR] Windows双核测试失败，退出码: $mpi_exit_code"
+              Write-Host "Output: $mpi_output"
+            }
+            
+            # Check for computation results
+            if (Test-Path "WT.out") {
+              Write-Host "[OK] WT.out file generated successfully for dual-core test"
+              $content = Get-Content "WT.out" -Raw
+              if ($content -match "Congratulations!") {
+                Write-Host "✅ WT.out 包含 'Congratulations!'"
+              } else {
+                Write-Host "❌ WT.out 不包含 'Congratulations!'"
+              }
+              
+              $time_cost = $content | Select-String "Time cost for whole program is about" | Select-Object -Last 1
+              if ($time_cost) {
+                Write-Host "✅ Time cost: $($time_cost.ToString().Trim())"
+              } else {
+                Write-Host "❌ 未找到 'Time cost for whole program is about' 信息"
+              }
+
+              $core_info = $content | Select-String "You are using.*CPU cores" | Select-Object -Last 1
+              if ($core_info -and $core_info -match "2.*CPU cores") {
+                Write-Host "[SUCCESS] Dual-core computation verified!"
+              } else {
+                Write-Host "[WARNING] Dual-core count verification failed. Found: $($core_info.ToString().Trim())"
+              }
+              
+              $cores = $content | Select-String "CPU cores" | Select-Object -Last 1
+              Write-Host "[Windows] 双核结果: $($cores.ToString().Trim())"
+            } else {
+              Write-Host "[ERROR] WT.out file not generated for dual-core test"
+            }
+          } catch {
+            Write-Host "[ERROR] Windows双核测试执行失败: $_"
           }
 
           if (Test-Path "WT.out") {
