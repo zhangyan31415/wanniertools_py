@@ -343,7 +343,7 @@ py.install_sources([
 if fs.exists('src/wannier_tools/internal_mpi')
   install_subdir('src/wannier_tools/internal_mpi', 
     install_dir: py.get_install_dir() / 'wannier_tools', 
-    strip_directory: true)
+    strip_directory: false)
 else
   message('Warning: internal_mpi directory not found, MPI runtime files will not be bundled')
 endif
