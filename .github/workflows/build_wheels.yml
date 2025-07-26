@@ -240,11 +240,12 @@ jobs:
               fi
             done
             
-            # 复制OpenMPI共享库
-            echo "📦 Copying OpenMPI libraries..."
+            # 复制OpenMPI共享库和依赖
+            echo "📦 Copying OpenMPI libraries and dependencies..."
             # 优先搜索 /usr/lib64/openmpi/lib (OpenMPI专用路径)
             LIB_DIRS="/usr/lib64/openmpi/lib /usr/lib64 /usr/lib /usr/lib/x86_64-linux-gnu"
             
+            # OpenMPI核心库
             for lib_name in "libmpi" "libopen-pal" "libopen-rte"; do
               LIB_FOUND=""
               for lib_dir in $LIB_DIRS; do
@@ -257,6 +258,26 @@ jobs:
               done
               if [ -z "$LIB_FOUND" ]; then
                 echo "⚠️ ${lib_name} library not found in standard locations"
+              fi
+            done
+            
+            # hwloc依赖库（必需的）
+            echo "📦 Copying hwloc and other MPI dependencies..."
+            SYSTEM_LIB_DIRS="/usr/lib64 /usr/lib /lib64 /lib"
+            ALL_LIB_DIRS="$LIB_DIRS $SYSTEM_LIB_DIRS"
+            
+            for lib_name in "libhwloc" "libevent" "libpmix" "libprte" "libprrte"; do
+              LIB_FOUND=""
+              for lib_dir in $ALL_LIB_DIRS; do
+                if ls "$lib_dir/${lib_name}.so"* >/dev/null 2>&1; then
+                  echo "✅ Found ${lib_name} libraries in: $lib_dir"
+                  cp "$lib_dir/${lib_name}.so"* src/wannier_tools/internal_mpi/linux_x86_64/lib/ 2>/dev/null || true
+                  LIB_FOUND="yes"
+                  break
+                fi
+              done
+              if [ -z "$LIB_FOUND" ]; then
+                echo "⚠️ ${lib_name} library not found (may not be required)"
               fi
             done
             

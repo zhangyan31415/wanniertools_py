@@ -9,6 +9,7 @@ RUN yum install -y --setopt=keepcache=0 \
         openblas-devel \
         arpack-devel \
         openmpi-devel \
+        hwloc-devel \
         zip \
         unzip \
         && yum clean all -y \
