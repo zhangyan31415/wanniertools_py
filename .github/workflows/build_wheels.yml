@@ -194,7 +194,19 @@ jobs:
             module load mpi/openmpi-x86_64 2>/dev/null || true
             
             echo "📦 Installing and configuring OpenMPI for Linux builds..."
+            
+            # 在CentOS 7 manylinux环境中加载OpenMPI模块
+            if [ -f "/etc/modulefiles/mpi/openmpi-x86_64" ] || [ -d "/usr/share/Modules/modulefiles/mpi" ]; then
+              echo "🔄 Loading OpenMPI module..."
+              module load mpi/openmpi-x86_64 2>/dev/null || echo "Module loading failed, continuing..."
+              export PATH="/usr/lib64/openmpi/bin:$PATH"
+              export LD_LIBRARY_PATH="/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH"
+            fi
+            
             # 验证OpenMPI安装
+            echo "🔍 Searching for OpenMPI installation..."
+            find /usr -name "mpirun" -type f 2>/dev/null | head -5 || echo "No mpirun found via find"
+            ls -la /usr/lib64/openmpi/bin/ 2>/dev/null || echo "No openmpi bin directory"
             which mpirun || echo "⚠️ mpirun not found in PATH"
             mpirun --version 2>/dev/null || echo "⚠️ mpirun version check failed"
             
@@ -202,40 +214,76 @@ jobs:
             mkdir -p src/wannier_tools/internal_mpi/linux_x86_64/{bin,lib,share}
             
             echo "📋 Copying OpenMPI runtime files..."
-            # 复制mpirun可执行文件
-            cp /usr/bin/mpirun src/wannier_tools/internal_mpi/linux_x86_64/bin/ 2>/dev/null || \
-            cp /usr/lib64/openmpi/bin/mpirun src/wannier_tools/internal_mpi/linux_x86_64/bin/ 2>/dev/null || \
-            find /usr -name mpirun -type f -executable 2>/dev/null | head -1 | xargs -I {} cp {} src/wannier_tools/internal_mpi/linux_x86_64/bin/ || \
-            echo "⚠️ mpirun not found, continuing..."
+            # 复制mpirun可执行文件 - 更强的搜索逻辑
+            MPIRUN_FOUND=""
+            for MPIRUN_PATH in "/usr/lib64/openmpi/bin/mpirun" "/usr/bin/mpirun" $(find /usr -name mpirun -type f -executable 2>/dev/null | head -1); do
+              if [ -f "$MPIRUN_PATH" ] && [ -x "$MPIRUN_PATH" ]; then
+                echo "✅ Found mpirun at: $MPIRUN_PATH"
+                cp "$MPIRUN_PATH" src/wannier_tools/internal_mpi/linux_x86_64/bin/
+                MPIRUN_FOUND="yes"
+                break
+              fi
+            done
+            
+            if [ -z "$MPIRUN_FOUND" ]; then
+              echo "❌ ERROR: mpirun not found! Available files:"
+              find /usr -name "*mpi*" -type f 2>/dev/null | head -10 || echo "No MPI files found"
+              exit 1
+            fi
             
             # 复制orterun (如果存在)
-            cp /usr/bin/orterun src/wannier_tools/internal_mpi/linux_x86_64/bin/ 2>/dev/null || \
-            cp /usr/lib64/openmpi/bin/orterun src/wannier_tools/internal_mpi/linux_x86_64/bin/ 2>/dev/null || true
+            for ORTERUN_PATH in "/usr/lib64/openmpi/bin/orterun" "/usr/bin/orterun"; do
+              if [ -f "$ORTERUN_PATH" ] && [ -x "$ORTERUN_PATH" ]; then
+                echo "✅ Found orterun at: $ORTERUN_PATH"
+                cp "$ORTERUN_PATH" src/wannier_tools/internal_mpi/linux_x86_64/bin/
+                break
+              fi
+            done
             
             # 复制OpenMPI共享库
             echo "📦 Copying OpenMPI libraries..."
-            find /usr/lib64 -name "libmpi.so*" -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || \
-            find /usr/lib -name "libmpi.so*" -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || true
+            # 优先搜索 /usr/lib64/openmpi/lib (OpenMPI专用路径)
+            LIB_DIRS="/usr/lib64/openmpi/lib /usr/lib64 /usr/lib /usr/lib/x86_64-linux-gnu"
             
-            find /usr/lib64 -name "libopen-pal.so*" -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || \
-            find /usr/lib -name "libopen-pal.so*" -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || true
-            
-            find /usr/lib64 -name "libopen-rte.so*" -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || \
-            find /usr/lib -name "libopen-rte.so*" -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || true
+            for lib_name in "libmpi" "libopen-pal" "libopen-rte"; do
+              LIB_FOUND=""
+              for lib_dir in $LIB_DIRS; do
+                if ls "$lib_dir/${lib_name}.so"* >/dev/null 2>&1; then
+                  echo "✅ Found ${lib_name} libraries in: $lib_dir"
+                  cp "$lib_dir/${lib_name}.so"* src/wannier_tools/internal_mpi/linux_x86_64/lib/ 2>/dev/null || true
+                  LIB_FOUND="yes"
+                  break
+                fi
+              done
+              if [ -z "$LIB_FOUND" ]; then
+                echo "⚠️ ${lib_name} library not found in standard locations"
+              fi
+            done
             
             # 复制OpenMPI配置文件和帮助文件
             echo "📦 Copying OpenMPI configuration files..."
-            if [ -d "/usr/share/openmpi" ]; then
-              cp -r /usr/share/openmpi/* src/wannier_tools/internal_mpi/linux_x86_64/share/ 2>/dev/null || true
-            fi
-            
-            if [ -d "/usr/lib64/openmpi/share" ]; then
-              cp -r /usr/lib64/openmpi/share/* src/wannier_tools/internal_mpi/linux_x86_64/share/ 2>/dev/null || true
-            fi
+            SHARE_DIRS="/usr/share/openmpi /usr/lib64/openmpi/share"
+            for share_dir in $SHARE_DIRS; do
+              if [ -d "$share_dir" ]; then
+                echo "✅ Found OpenMPI share directory: $share_dir"
+                cp -r "$share_dir"/* src/wannier_tools/internal_mpi/linux_x86_64/share/ 2>/dev/null || true
+                break
+              fi
+            done
             
             echo "✅ OpenMPI runtime files copied to internal_mpi/linux_x86_64/"
             echo "📋 Contents:"
-            find src/wannier_tools/internal_mpi/linux_x86_64/ -type f 2>/dev/null || echo "No files found"
+            find src/wannier_tools/internal_mpi/linux_x86_64/ -type f 2>/dev/null || echo "No files found in internal_mpi"
+            
+            # 验证关键文件是否存在
+            if [ -f "src/wannier_tools/internal_mpi/linux_x86_64/bin/mpirun" ]; then
+              echo "✅ mpirun successfully copied"
+              ls -la src/wannier_tools/internal_mpi/linux_x86_64/bin/
+            else
+              echo "❌ ERROR: mpirun was not copied successfully!"
+              exit 1
+            fi
+            
             echo "✅ All build dependencies are available."
 
           # macOS: 安装Open MPI并复制到internal_mpi目录

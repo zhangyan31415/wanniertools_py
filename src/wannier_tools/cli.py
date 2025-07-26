@@ -100,8 +100,27 @@ Note: For parallel computation, make sure MPI is installed:
             else:
                 # Linux/macOS use mpirun
                 candidate = pkg_root / 'internal_mpi' / plat_dir / 'bin' / 'mpirun'
+            
+            print(f"[DEBUG] Looking for bundled MPI at: {candidate}")
             if candidate.is_file():
                 mpirun_exe = str(candidate)
+                print(f"[DEBUG] Found bundled MPI: {mpirun_exe}")
+            else:
+                print(f"[DEBUG] Bundled MPI not found. Checking directory contents...")
+                mpi_dir = pkg_root / 'internal_mpi'
+                if mpi_dir.exists():
+                    print(f"[DEBUG] internal_mpi directory exists: {list(mpi_dir.iterdir())}")
+                    if (mpi_dir / plat_dir).exists():
+                        print(f"[DEBUG] Platform directory exists: {list((mpi_dir / plat_dir).iterdir())}")
+                        bin_dir = mpi_dir / plat_dir / 'bin'
+                        if bin_dir.exists():
+                            print(f"[DEBUG] Bin directory exists: {list(bin_dir.iterdir())}")
+                        else:
+                            print(f"[DEBUG] Bin directory does not exist: {bin_dir}")
+                    else:
+                        print(f"[DEBUG] Platform directory does not exist: {mpi_dir / plat_dir}")
+                else:
+                    print(f"[DEBUG] internal_mpi directory does not exist: {mpi_dir}")
 
         # Fallback to system mpirun/mpiexec if bundled is not found
         if mpirun_exe is None:
