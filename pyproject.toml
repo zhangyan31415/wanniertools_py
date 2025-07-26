@@ -123,10 +123,7 @@ before-build = [
     "start /wait msmpisetup.exe -unattend",
     "echo === Installing MS-MPI SDK ===", 
     "start /wait msiexec /i msmpisdk.msi /quiet /norestart",
-    "echo Verifying toolchain and MPI installation...",
-    "gfortran --version",
-    "gcc --version",
-    "echo Checking MPI installation...",
+
     "del msmpisetup.exe msmpisdk.msi",
     
     "echo === Checking for MPI files after installation ===",
@@ -139,6 +136,11 @@ before-build = [
     "set \"PATH=C:\\Program Files\\Microsoft MPI\\Bin;%PATH%\"",
     "set \"CPATH=C:\\Program Files (x86)\\Microsoft SDKs\\MPI\\Include\"",
     "set \"LIBRARY_PATH=C:\\Program Files (x86)\\Microsoft SDKs\\MPI\\Lib\\x64;C:\\msys64\\ucrt64\\lib\""
+    
+    "echo Verifying toolchain and MPI installation...",
+    "gfortran --version",
+    "gcc --version",
+    "echo Checking MPI installation...",
 ]
 repair-wheel-command = [
     "delvewheel repair --add-path C:\\msys64\\ucrt64\\bin -w {dest_dir} {wheel}",
