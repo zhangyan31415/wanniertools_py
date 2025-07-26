@@ -39,16 +39,15 @@ def inject_msmpi_dll(dest_dir):
         (mpi_dir / 'include').mkdir(parents=True, exist_ok=True)
         
         # Microsoft MPI DLL路径查找
-        msmpi_bin_path = Path('C:/Program Files/Microsoft MPI/Bin')
-        if not msmpi_bin_path.exists():
-            msmpi_bin_path = Path('C:/Program Files (x86)/Microsoft MPI/Bin')
-        if not msmpi_bin_path.exists():
-            msmpi_bin_path = Path('C:/Windows/System32')
+        # 先检查最常见的位置：Windows System32
+        msmpi_dll_file = Path('C:/Windows/System32/msmpi.dll')
+        if not msmpi_dll_file.exists():
+            # 然后检查 Program Files 位置
+            msmpi_dll_file = Path('C:/Program Files/Microsoft MPI/Bin/msmpi.dll')
+            if not msmpi_dll_file.exists():
+                msmpi_dll_file = Path('C:/Program Files (x86)/Microsoft MPI/Bin/msmpi.dll')
         
-        print(f"Using MS-MPI DLL from: {msmpi_bin_path}")
-        
-        # 复制msmpi.dll到wheel的internal_mpi/bin目录
-        msmpi_dll_file = msmpi_bin_path / 'msmpi.dll'
+        print(f"Using MS-MPI DLL from: {msmpi_dll_file.parent}")
         if msmpi_dll_file.exists():
             shutil.copy2(msmpi_dll_file, mpi_dir / 'bin')
             print(f"Copied msmpi.dll")
