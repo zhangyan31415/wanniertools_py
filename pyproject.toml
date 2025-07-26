@@ -107,61 +107,38 @@ environment = { MAKEFLAGS = "-j$(sysctl -n hw.ncpu)", NINJA_STATUS = "[%f/%t] " 
 archs = ["AMD64"]
 environment = { FC = "C:\\\\msys64\\\\ucrt64\\\\bin\\\\gfortran.exe", CC = "C:\\\\msys64\\\\ucrt64\\\\bin\\\\gcc.exe", CXX = "C:\\\\msys64\\\\ucrt64\\\\bin\\\\g++.exe", FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch -O2", CFLAGS = "-O2", CXXFLAGS = "-O2", LDFLAGS = "-Wl,--allow-multiple-definition -lmsmpi", OPENBLAS_NUM_THREADS = "1", OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1", BLAS = "None", LAPACK = "None", PATH = "C:\\\\msys64\\\\ucrt64\\\\bin;${PATH}" }
 before-build = [
-    "echo === Windows Static Build Strategy with MPI Support ===",
-    "pip install delvewheel -q",
-    "pip install ninja -q",
+    "pip install delvewheel ninja -q",
+    "echo === Checking for existing MPI files before installation ===",
+    "dir C:\\Windows\\System32\\*mpi*.dll 2>nul || echo No MPI DLLs in System32",
+    "dir \"C:\\Program Files\\Microsoft MPI\\Bin\\*.dll\" 2>nul || echo No MPI DLLs in Program Files",
+    "dir \"C:\\Program Files (x86)\\Microsoft MPI\\Bin\\*.dll\" 2>nul || echo No MPI DLLs in Program Files (x86)",
     
-    "echo Installing latest MSYS2 UCRT64 toolchain...",
     "C:\\msys64\\usr\\bin\\pacman.exe -Syu --noconfirm",
     "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-gcc-fortran mingw-w64-ucrt-x86_64-openblas mingw-w64-ucrt-x86_64-arpack",
     
-    "echo === Installing Microsoft MPI v10.1.3 (Direct Download) ===",
-    "echo Downloading MS-MPI Runtime and SDK from Microsoft...",
-    "powershell -Command \"$ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://download.microsoft.com/download/a/5/2/a5207ca5-1203-491a-8fb8-906fd68ae623/msmpisetup.exe' -OutFile msmpisetup.exe\"",
-    "powershell -Command \"$ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://download.microsoft.com/download/a/5/2/a5207ca5-1203-491a-8fb8-906fd68ae623/msmpisdk.msi' -OutFile msmpisdk.msi\"",
+    "powershell -Command \"Invoke-WebRequest 'https://download.microsoft.com/download/a/5/2/a5207ca5-1203-491a-8fb8-906fd68ae623/msmpisetup.exe' -OutFile msmpisetup.exe\"",
+    "powershell -Command \"Invoke-WebRequest 'https://download.microsoft.com/download/a/5/2/a5207ca5-1203-491a-8fb8-906fd68ae623/msmpisdk.msi' -OutFile msmpisdk.msi\"",
     
-    "echo Installing MS-MPI Runtime (contains msmpi.dll and mpiexec.exe)...",
+    "echo === Installing MS-MPI Runtime ===",
     "start /wait msmpisetup.exe -unattend",
-    "if %ERRORLEVEL% neq 0 ( echo [ERROR] MS-MPI Runtime installation failed with code %ERRORLEVEL% && exit /b 1 )",
-    
-    "echo Installing MS-MPI SDK (headers and libraries)...",
-    "start /wait msiexec /i msmpisdk.msi /quiet /norestart /l*v msmpi_install.log",
-    "if %ERRORLEVEL% neq 0 ( echo [ERROR] MS-MPI SDK installation failed with code %ERRORLEVEL% && type msmpi_install.log && exit /b 1 )",
-    
-    "echo Cleaning up installers...",
-    "del msmpisetup.exe 2>nul",
-    "del msmpisdk.msi 2>nul",
-    "del msmpi_install.log 2>nul",
-    
-    "echo === Verifying MS-MPI Installation ===",
-    "timeout /t 3 /nobreak >nul",
-    "if not exist \"C:\\Program Files\\Microsoft MPI\\Bin\\msmpi.dll\" ( if not exist \"C:\\Program Files (x86)\\Microsoft MPI\\Bin\\msmpi.dll\" ( echo [FATAL ERROR] msmpi.dll not found after installation! && exit /b 1 ) )",
-    "if not exist \"C:\\Program Files (x86)\\Microsoft SDKs\\MPI\\Include\\mpi.h\" ( if not exist \"C:\\Program Files\\Microsoft MPI\\Include\\mpi.h\" ( echo [FATAL ERROR] mpi.h not found after installation! && exit /b 1 ) )",
-    "echo [SUCCESS] MS-MPI installation verified successfully",
-    "echo === Microsoft MPI Installation Complete ===",
-    
-    "echo === Setting up build environment variables for MPI ===",
-    "echo Detecting Microsoft MPI installation paths...",
-    "if exist \"C:\\Program Files\\Microsoft MPI\\Bin\" ( set \"MSMPI_BIN=C:\\Program Files\\Microsoft MPI\\Bin\" ) else ( set \"MSMPI_BIN=C:\\Program Files (x86)\\Microsoft MPI\\Bin\" )",
-    "if exist \"C:\\Program Files (x86)\\Microsoft SDKs\\MPI\\Include\" ( set \"MSMPI_INC=C:\\Program Files (x86)\\Microsoft SDKs\\MPI\\Include\" ) else ( set \"MSMPI_INC=C:\\Program Files\\Microsoft MPI\\Include\" )",
-    "if exist \"C:\\Program Files (x86)\\Microsoft SDKs\\MPI\\Lib\\x64\" ( set \"MSMPI_LIB64=C:\\Program Files (x86)\\Microsoft SDKs\\MPI\\Lib\\x64\" ) else ( set \"MSMPI_LIB64=C:\\Program Files\\Microsoft MPI\\Lib\\x64\" )",
-    
-    "echo Located MS-MPI: BIN=%MSMPI_BIN%, INC=%MSMPI_INC%, LIB64=%MSMPI_LIB64%",
-    "set \"PATH=%MSMPI_BIN%;%PATH%\"",
-    "set \"CPATH=%MSMPI_INC%\"",
-    "set \"LIBRARY_PATH=%MSMPI_LIB64%;C:\\msys64\\ucrt64\\lib\"",
-    
+    "echo === Installing MS-MPI SDK ===", 
+    "start /wait msiexec /i msmpisdk.msi /quiet /norestart",
     "echo Verifying toolchain and MPI installation...",
     "gfortran --version",
     "gcc --version",
-    
     "echo Checking MPI installation...",
-    "where mpiexec 2>nul || echo [WARNING] mpiexec not found in PATH",
-    "if not exist \"%MSMPI_BIN%\\msmpi.dll\" ( echo [ERROR] msmpi.dll not found! Listing available files: && dir /b \"%MSMPI_BIN%\\*.dll\" 2>nul ) else ( echo [OK] msmpi.dll found at %MSMPI_BIN%\\msmpi.dll )",
-    "if not exist \"%MSMPI_INC%\\mpi.h\" ( echo [WARNING] mpi.h not found at %MSMPI_INC% ) else ( echo [OK] mpi.h found )",
-    "if not exist \"%MSMPI_INC%\\mpif.h\" ( echo [WARNING] mpif.h not found at %MSMPI_INC% ) else ( echo [OK] mpif.h found )",
-    "if not exist \"%MSMPI_LIB64%\\msmpi.lib\" ( echo [WARNING] msmpi.lib not found at %MSMPI_LIB64% && dir /b \"%MSMPI_LIB64%\\*.lib\" 2>nul ) else ( echo [OK] msmpi.lib found )",
-    "echo [OK] Latest static build toolchain ready with MPI and parallel support"
+    "del msmpisetup.exe msmpisdk.msi",
+    
+    "echo === Checking for MPI files after installation ===",
+    "dir C:\\Windows\\System32\\*mpi*.dll 2>nul || echo No MPI DLLs in System32",
+    "dir \"C:\\Program Files\\Microsoft MPI\\Bin\\*.dll\" 2>nul || echo No MPI DLLs in Program Files",
+    "dir \"C:\\Program Files (x86)\\Microsoft MPI\\Bin\\*.dll\" 2>nul || echo No MPI DLLs in Program Files (x86)",
+    "where mpiexec 2>nul || echo mpiexec not found in PATH",
+    
+    "echo === Setting environment variables ===",
+    "set \"PATH=C:\\Program Files\\Microsoft MPI\\Bin;%PATH%\"",
+    "set \"CPATH=C:\\Program Files (x86)\\Microsoft SDKs\\MPI\\Include\"",
+    "set \"LIBRARY_PATH=C:\\Program Files (x86)\\Microsoft SDKs\\MPI\\Lib\\x64;C:\\msys64\\ucrt64\\lib\""
 ]
 repair-wheel-command = [
     "delvewheel repair --add-path C:\\msys64\\ucrt64\\bin -w {dest_dir} {wheel}",
