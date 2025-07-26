@@ -57,17 +57,30 @@ def inject_msmpi_dll(dest_dir):
             print("[ERROR] msmpi.dll not found in any standard location.")
             return False
             
-        # 查找并复制 mpiexec.exe
-        mpiexec_path = Path('C:/Program Files/Microsoft MPI/Bin/mpiexec.exe')
-        if not mpiexec_path.exists():
-            mpiexec_path = Path('C:/Program Files (x86)/Microsoft MPI/Bin/mpiexec.exe')
-
-        if mpiexec_path.exists():
-            print(f"Found mpiexec.exe at: {mpiexec_path}")
-            shutil.copy2(mpiexec_path, mpi_dir / 'bin')
-            print("Copied mpiexec.exe")
-        else:
-            print("[WARNING] mpiexec.exe not found, skipping.")
+        # 查找并复制 MS-MPI 可执行文件
+        mpi_executables = ['mpiexec.exe', 'smpd.exe', 'msmpilaunchsvc.exe']
+        mpi_bin_paths = [
+            Path('C:/Program Files/Microsoft MPI/Bin'),
+            Path('C:/Program Files (x86)/Microsoft MPI/Bin')
+        ]
+        
+        for exe_name in mpi_executables:
+            exe_found = False
+            for bin_path in mpi_bin_paths:
+                exe_path = bin_path / exe_name
+                if exe_path.exists():
+                    print(f"Found {exe_name} at: {exe_path}")
+                    shutil.copy2(exe_path, mpi_dir / 'bin')
+                    print(f"Copied {exe_name}")
+                    exe_found = True
+                    break
+            
+            if not exe_found:
+                if exe_name == 'mpiexec.exe':
+                    print(f"[ERROR] {exe_name} not found - required for MPI execution")
+                    return False
+                else:
+                    print(f"[WARNING] {exe_name} not found - may cause MPI issues")
         
         # 重新打包wheel
         with zipfile.ZipFile(wheel_file, 'w', zipfile.ZIP_DEFLATED) as z:
