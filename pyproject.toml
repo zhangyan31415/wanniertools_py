@@ -112,7 +112,7 @@ before-build = [
     "pip install ninja -q",
     "echo Installing latest MSYS2 UCRT64 toolchain with MPI...",
     "C:\\msys64\\usr\\bin\\pacman.exe -Syu --noconfirm",
-    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-gcc-fortran mingw-w64-ucrt-x86_64-openblas mingw-w64-ucrt-x86_64-arpack mingw-w64-ucrt-x86_64-msmpi",
+    "C:\\msys64\\usr\\bin\\pacman.exe -S --noconfirm mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-gcc-fortran mingw-w64-ucrt-x86_64-openblas mingw-w64-ucrt-x86_64-arpack mingw-w64-ucrt-x86_64-msmpi=9.0.1",
     "echo Verifying toolchain and MPI installation...",
     "gfortran --version",
     "gcc --version",
