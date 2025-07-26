@@ -42,63 +42,59 @@ set "MSMPI_INC=C:\Program Files (x86)\Microsoft SDKs\MPI\Include"
 set "MSMPI_LIB64=C:\Program Files (x86)\Microsoft SDKs\MPI\Lib\x64"
 set "SYSTEMROOT_DLL=C:\Windows\System32"
 
-if exist "%MSMPI_LIB64%\msmpi.lib" (
-  echo Generating libmsmpi.a for MinGW...
-  cd C:\msys64\ucrt64\lib
-  
-  rem Copy msmpi.lib and msmpi.dll to a temporary location for gendef/dlltool
-  copy "%MSMPI_LIB64%\msmpi.lib" . >nul
-  copy "%SYSTEMROOT_DLL%\msmpi.dll" . >nul
-  
-  rem Generate .def and .a files
-  gendef msmpi.dll
-  dlltool -d msmpi.def -l libmsmpi.a -D msmpi.dll
-  
-  del msmpi.lib msmpi.dll msmpi.def
-  echo Created libmsmpi.a in C:\msys64\ucrt64\lib
-) else (
-  echo [WARNING] msmpi.lib not found in expected SDK location. Cannot create MinGW-compatible MPI lib.
-)
+if not exist "%MSMPI_LIB64%\msmpi.lib" goto msmpi_lib_not_found
+
+echo Generating libmsmpi.a for MinGW...
+cd C:\msys64\ucrt64\lib
+copy "%MSMPI_LIB64%\msmpi.lib" . >nul
+copy "%SYSTEMROOT_DLL%\msmpi.dll" . >nul
+gendef msmpi.dll
+dlltool -d msmpi.def -l libmsmpi.a -D msmpi.dll
+del msmpi.lib msmpi.dll msmpi.def
+echo Created libmsmpi.a in C:\msys64\ucrt64\lib
+goto msmpi_lib_done
+
+:msmpi_lib_not_found
+echo [WARNING] msmpi.lib not found in expected SDK location. Cannot create MinGW-compatible MPI lib.
+
+:msmpi_lib_done
 
 rem Copy MPI headers to MSYS2 include path
-if exist "%MSMPI_INC%\mpi.h" (
-  echo Copying MPI headers to C:\msys64\ucrt64\include
-  xcopy /E /Y "%MSMPI_INC%" C:\msys64\ucrt64\include\MPI_SDK_Headers\ >nul
+if not exist "%MSMPI_INC%\mpi.h" goto mpi_headers_not_found
+
+echo Copying MPI headers to C:\msys64\ucrt64\include
+xcopy /E /Y "%MSMPI_INC%" C:\msys64\ucrt64\include\MPI_SDK_Headers\ >nul
   
-  rem Create Fortran MPI module file (mpi.mod)
-  echo Generating mpi.mod for GFortran...
-  cd C:\msys64\ucrt64\include\MPI_SDK_Headers
-  
-  rem Try different possible Fortran source file names
+rem Create Fortran MPI module file (mpi.mod)
+echo Generating mpi.mod for GFortran...
+cd C:\msys64\ucrt64\include\MPI_SDK_Headers
+
+if exist mpi.F90 (
+  gfortran -c -cpp -fallow-invalid-boz -fno-range-check -D_WIN64 "-DINT_PTR_KIND()=8" mpi.F90
+) else (
   if exist mpi.f90 (
     gfortran -c -cpp -fallow-invalid-boz -fno-range-check -D_WIN64 "-DINT_PTR_KIND()=8" mpi.f90
   ) else (
-    if exist mpi.F90 (
-      gfortran -c -cpp -fallow-invalid-boz -fno-range-check -D_WIN64 "-DINT_PTR_KIND()=8" mpi.F90
-    ) else (
-      if exist mpif.h (
-        rem If no .f90 file, skip mpi.mod generation and use mpif.h instead
-        echo No mpi.f90 found, will use mpif.h for Fortran compilation
-        goto skip_mod_generation
-      ) else (
-        echo [WARNING] No Fortran MPI source file found. Skipping mpi.mod generation.
-        goto skip_mod_generation
-      )
-    )
+    echo [WARNING] No Fortran MPI source file (mpi.f90/F90) found. Skipping mpi.mod generation.
+    goto mod_generation_done
   )
-  
-  if exist mpi.mod (
-    copy mpi.mod ..\ >nul
-    echo Copied mpi.mod to C:\msys64\ucrt64\include
-  ) else (
-    echo [ERROR] Failed to generate mpi.mod.
-  )
-  del *.o *.mod 2>nul
-  
-  :skip_mod_generation
-) else (
-  echo [WARNING] MPI headers not found in expected SDK location. Cannot configure Fortran MPI modules.
 )
+  
+if exist mpi.mod (
+  copy mpi.mod ..\ >nul
+  echo Copied mpi.mod to C:\msys64\ucrt64\include
+) else (
+  echo [ERROR] Failed to generate mpi.mod.
+)
+del *.o *.mod 2>nul
+  
+:mod_generation_done
+goto mpi_headers_done
+
+:mpi_headers_not_found
+echo [WARNING] MPI headers not found in expected SDK location. Cannot configure Fortran MPI modules.
+
+:mpi_headers_done
 
 echo === Setting up final environment ===
 rem Add all possible MPI locations to PATH
