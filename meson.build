@@ -245,6 +245,10 @@ is_wheel_build = run_command('python', '-c', 'import os; print(os.environ.get("C
 # Enable MPI on macOS and Windows
 if host_machine.system() == 'darwin' or host_machine.system() == 'windows'
   fortran_args += ['-DMPI']
+  if host_machine.system() == 'windows'
+    mpi_incdir = 'C:/Program Files (x86)/Microsoft SDKs/MPI/Include'
+    fortran_args += ['-I' + mpi_incdir]
+  endif
   if is_wheel_build == '1'
     message('Building wheel with compile-time MPI support for macOS')
   else
