@@ -41,7 +41,7 @@ jobs:
       - name: Build Docker image (Linux)
         if: inputs.platform == 'ubuntu-latest'
         run: |
-          docker build -t wanniertools-builder-nompi -f Dockerfile.manylinux-nompi .
+          docker build -t wanniertools-builder-openmpi -f Dockerfile.manylinux-openmpi .
       
       # macOS: 安装依赖
       - name: Install dependencies (macOS)
@@ -62,7 +62,7 @@ jobs:
           CIBW_ENVIRONMENT: FFLAGS="-fallow-invalid-boz -fbackslash -ffree-line-length-none"
           
           # Linux 配置
-          CIBW_MANYLINUX_X86_64_IMAGE: wanniertools-builder-nompi
+          CIBW_MANYLINUX_X86_64_IMAGE: wanniertools-builder-openmpi
           
           # macOS 配置
           CIBW_ENVIRONMENT_MACOS: >

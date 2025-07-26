@@ -122,8 +122,8 @@ def test_docker_setup():
         return False
     
     # 检查Dockerfile
-    if not Path('build_support/Dockerfile.manylinux-nompi').exists():
-        print("❌ 缺少Dockerfile: build_support/Dockerfile.manylinux-nompi")
+    if not Path('build_support/Dockerfile.manylinux-openmpi').exists():
+        print("❌ 缺少Dockerfile: build_support/Dockerfile.manylinux-openmpi")
         return False
     
     print("✅ Docker环境检查通过")

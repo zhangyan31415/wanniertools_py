@@ -128,7 +128,7 @@ cibuildwheel --print-build-identifiers
 
 - 📖 [GitHub Actions 使用指南](docs/GITHUB_ACTIONS_GUIDE.md)
 - 🔧 [开发者手册](docs/DEVELOPER_MANUAL.md)
-- 🐳 [Docker 构建配置](build_support/Dockerfile.manylinux-nompi)
+- 🐳 [Docker 构建配置](build_support/Dockerfile.manylinux-openmpi)
 
 ## 🎯 总结
 

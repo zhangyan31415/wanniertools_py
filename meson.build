@@ -254,9 +254,10 @@ endif
 # For wheels/packaging builds, we use runtime MPI detection only
 is_wheel_build = run_command('python', '-c', 'import os; print(os.environ.get("CIBUILDWHEEL", "false"))', check: false).stdout().strip()
 
-# Enable MPI on macOS and Windows (using MinGW-compatible MS-MPI)
-if host_machine.system() == 'darwin' or (host_machine.system() == 'windows' and mpi_dep.found())
+# Enable MPI on all platforms where MPI is available
+if mpi_dep.found() or host_machine.system() == 'darwin' or (host_machine.system() == 'windows')
   fortran_args += ['-DMPI']
+  
   if host_machine.system() == 'windows'
     # For Windows, add the specific Fortran MPI module include path
     fortran_args += ['-I' + 'C:/msys64/ucrt64/include']
@@ -264,12 +265,12 @@ if host_machine.system() == 'darwin' or (host_machine.system() == 'windows' and 
   endif
 
   if is_wheel_build == '1'
-    message('Building wheel with compile-time MPI support for macOS/Windows')
+    message('Building wheel with compile-time MPI support for ' + host_machine.system())
   else
-    message('Building with compile-time MPI support for macOS/Windows')
+    message('Building with compile-time MPI support for ' + host_machine.system())
   endif
 else
-  message('Building in serial mode for Linux/other or Windows without detected MPI.')
+  message('Building in serial mode - MPI not found or not supported.')
 endif
 
 

@@ -85,7 +85,7 @@ test-requires = ["pytest"]
 # Linux特定配置
 [tool.cibuildwheel.linux]
 archs = ["x86_64"]
-manylinux-x86_64-image = "wanniertools-builder-nompi"
+manylinux-x86_64-image = "wanniertools-builder-openmpi"
 environment = { FFLAGS = "-fallow-invalid-boz -fbackslash -ffree-line-length-none -fallow-argument-mismatch" }
 before-build = [
     "echo 'Building Linux wheels with MPICH runtime MPI detection'",

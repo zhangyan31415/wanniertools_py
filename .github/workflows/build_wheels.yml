@@ -129,7 +129,7 @@ jobs:
       - name: Build custom Docker image (Linux only)
         if: runner.os == 'Linux'
         run: |
-          docker build -t wanniertools-builder-nompi -f build_support/Dockerfile.manylinux-nompi .
+          docker build -t wanniertools-builder-openmpi -f build_support/Dockerfile.manylinux-openmpi .
       
       # macOS: 安装 Homebrew 依赖
       - name: Install dependencies (macOS)
@@ -182,13 +182,60 @@ jobs:
           # Linux 编译环境设置: 串行构建
           CIBW_ENVIRONMENT_LINUX: 'FC=gfortran FFLAGS="-fallow-argument-mismatch -ffree-line-length-none"'
 
-          # Linux: 验证Docker镜像中预装的依赖
+          # Linux: 安装OpenMPI并复制到internal_mpi目录
           CIBW_BEFORE_BUILD_LINUX: |
             set -e
             echo "✅ Verifying pre-installed build dependencies in Docker image..."
             gfortran --version
             meson --version
             ninja --version
+            
+            # 加载OpenMPI模块 (某些发行版需要)
+            module load mpi/openmpi-x86_64 2>/dev/null || true
+            
+            echo "📦 Installing and configuring OpenMPI for Linux builds..."
+            # 验证OpenMPI安装
+            which mpirun || echo "⚠️ mpirun not found in PATH"
+            mpirun --version 2>/dev/null || echo "⚠️ mpirun version check failed"
+            
+            # 创建internal_mpi目录结构
+            mkdir -p src/wannier_tools/internal_mpi/linux_x86_64/{bin,lib,share}
+            
+            echo "📋 Copying OpenMPI runtime files..."
+            # 复制mpirun可执行文件
+            cp /usr/bin/mpirun src/wannier_tools/internal_mpi/linux_x86_64/bin/ 2>/dev/null || \
+            cp /usr/lib64/openmpi/bin/mpirun src/wannier_tools/internal_mpi/linux_x86_64/bin/ 2>/dev/null || \
+            find /usr -name mpirun -type f -executable 2>/dev/null | head -1 | xargs -I {} cp {} src/wannier_tools/internal_mpi/linux_x86_64/bin/ || \
+            echo "⚠️ mpirun not found, continuing..."
+            
+            # 复制orterun (如果存在)
+            cp /usr/bin/orterun src/wannier_tools/internal_mpi/linux_x86_64/bin/ 2>/dev/null || \
+            cp /usr/lib64/openmpi/bin/orterun src/wannier_tools/internal_mpi/linux_x86_64/bin/ 2>/dev/null || true
+            
+            # 复制OpenMPI共享库
+            echo "📦 Copying OpenMPI libraries..."
+            find /usr/lib64 -name "libmpi.so*" -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || \
+            find /usr/lib -name "libmpi.so*" -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || true
+            
+            find /usr/lib64 -name "libopen-pal.so*" -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || \
+            find /usr/lib -name "libopen-pal.so*" -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || true
+            
+            find /usr/lib64 -name "libopen-rte.so*" -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || \
+            find /usr/lib -name "libopen-rte.so*" -exec cp {} src/wannier_tools/internal_mpi/linux_x86_64/lib/ \; 2>/dev/null || true
+            
+            # 复制OpenMPI配置文件和帮助文件
+            echo "📦 Copying OpenMPI configuration files..."
+            if [ -d "/usr/share/openmpi" ]; then
+              cp -r /usr/share/openmpi/* src/wannier_tools/internal_mpi/linux_x86_64/share/ 2>/dev/null || true
+            fi
+            
+            if [ -d "/usr/lib64/openmpi/share" ]; then
+              cp -r /usr/lib64/openmpi/share/* src/wannier_tools/internal_mpi/linux_x86_64/share/ 2>/dev/null || true
+            fi
+            
+            echo "✅ OpenMPI runtime files copied to internal_mpi/linux_x86_64/"
+            echo "📋 Contents:"
+            find src/wannier_tools/internal_mpi/linux_x86_64/ -type f 2>/dev/null || echo "No files found"
             echo "✅ All build dependencies are available."
 
           # macOS: 安装Open MPI并复制到internal_mpi目录
@@ -297,8 +344,57 @@ jobs:
             echo "📋 Contents:"
             find src/wannier_tools/internal_mpi/macos_arm64/ -type f 2>/dev/null || true
           
-          # Linux: 使用auditwheel修复wheel
-          CIBW_REPAIR_WHEEL_COMMAND_LINUX: "auditwheel repair {wheel} -w {dest_dir}"
+          # Linux: 使用auditwheel修复wheel并注入OpenMPI
+          CIBW_REPAIR_WHEEL_COMMAND_LINUX: |
+            # 保存仓库根目录，供后面复制OpenMPI文件
+            repo_root=$(pwd -P)
+            MPI_BIN_SRC="$repo_root/src/wannier_tools/internal_mpi/linux_x86_64/bin"
+            MPI_LIB_SRC="$repo_root/src/wannier_tools/internal_mpi/linux_x86_64/lib"
+            MPI_SHARE_SRC="$repo_root/src/wannier_tools/internal_mpi/linux_x86_64/share"
+
+            # 1) 使用auditwheel修复wheel
+            auditwheel repair {wheel} -w {dest_dir}
+
+            # 2) 遍历修复后的所有wheel，把OpenMPI运行时注入进去
+            cd {dest_dir}
+            for wheel_file in *.whl; do
+              echo "🔧 Injecting OpenMPI into $wheel_file"
+
+              # 解压
+              temp_dir=$(mktemp -d)
+              if [ ! -f "$wheel_file" ]; then
+                echo "❌ Wheel file not found: $wheel_file"
+                exit 1
+              fi
+              ( cd "$temp_dir" && unzip "$OLDPWD/$wheel_file" )
+
+              # 创建目录并复制文件
+              mkdir -p "$temp_dir/wannier_tools/internal_mpi/linux_x86_64/bin" \
+                       "$temp_dir/wannier_tools/internal_mpi/linux_x86_64/lib" \
+                       "$temp_dir/wannier_tools/internal_mpi/linux_x86_64/share"
+
+              if [ -d "$MPI_BIN_SRC" ]; then
+                cp "$MPI_BIN_SRC"/* "$temp_dir/wannier_tools/internal_mpi/linux_x86_64/bin/" 2>/dev/null || echo "No bin files"
+              else
+                echo "⚠️  $MPI_BIN_SRC 不存在"
+              fi
+              if [ -d "$MPI_LIB_SRC" ]; then
+                cp "$MPI_LIB_SRC"/* "$temp_dir/wannier_tools/internal_mpi/linux_x86_64/lib/" 2>/dev/null || echo "No lib files"
+              else
+                echo "⚠️  $MPI_LIB_SRC 不存在"
+              fi
+
+              if [ -d "$MPI_SHARE_SRC" ]; then
+                cp -r "$MPI_SHARE_SRC"/* "$temp_dir/wannier_tools/internal_mpi/linux_x86_64/share/" 2>/dev/null || true
+              else
+                echo "⚠️  $MPI_SHARE_SRC 不存在"
+              fi
+              
+              # 重新打包
+              ( cd "$temp_dir" && zip -qr "$OLDPWD/$wheel_file" . )
+              rm -rf "$temp_dir"
+              echo "✅ OpenMPI injected into $wheel_file"
+            done
           
           # macOS: 使用delocate修复并打包Open MPI
           CIBW_REPAIR_WHEEL_COMMAND_MACOS: |
@@ -415,10 +511,17 @@ jobs:
             exit 1
           fi
 
-      - name: Test serial functionality (Linux)
+      - name: Test MPI functionality (Linux)
         run: |
-          echo "=== Linux 串行功能测试 ==="
+          echo "=== Linux MPI功能测试 ==="
           cd examples/Haldane_model
+          
+          # 配置OpenMPI环境变量避免容器内权限问题
+          export OMPI_MCA_plm=isolated
+          export OMPI_MCA_btl_vader_single_copy_mechanism=none
+          export OMPI_MCA_rmaps_base_oversubscribe=yes
+          export PMIX_MCA_pcompress_base_silence_warning=1
+          
           echo "=== 测试单核运行 ==="
           
           # 强化错误检测 - 单核测试
@@ -460,6 +563,49 @@ jobs:
             echo "[Linux] 单核结果: $cores"
           else
             echo "❌ 未生成WT.out文件"
+            exit 1
+          fi
+
+          echo "=== 测试双核并行 ==="
+          rm -f WT.out  # 清理之前的输出
+          
+          # 强化错误检测 - 双核测试
+          set +e
+          mpi_output=$(wt-py -n 2 2>&1)
+          mpi_exit_code=$?
+          set -e
+          
+          echo "$mpi_output"
+          
+          if [ $mpi_exit_code -ne 0 ]; then
+            echo "❌ Linux 双核测试失败，退出码: $mpi_exit_code"
+            exit 1
+          fi
+          
+          if echo "$mpi_output" | grep -q "FATAL\|ERROR\|Could not import"; then
+            echo "❌ 双核测试检测到错误信息"
+            exit 1
+          fi
+          
+          if [ -f WT.out ]; then
+            echo "✅ WT.out 文件已生成"
+            if grep -q "Congratulations!" WT.out; then
+              echo "✅ WT.out 包含 'Congratulations!'"
+            else
+              echo "❌ WT.out 不包含 'Congratulations!'"
+              exit 1
+            fi
+            time_cost=$(grep "Time cost for whole program is about" WT.out | tail -1)
+            if [ -n "$time_cost" ]; then
+              echo "✅ Time cost: $time_cost"
+            else
+              echo "❌ 未找到 'Time cost for whole program is about' 信息"
+              exit 1
+            fi
+            cores=$(grep "CPU cores" WT.out | tail -1 || echo "未找到CPU cores信息")
+            echo "[Linux] 双核结果: $cores"
+          else
+            echo "❌ 双核测试未生成WT.out文件"
             exit 1
           fi
 

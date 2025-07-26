@@ -3,13 +3,19 @@ FROM quay.io/pypa/manylinux2014_x86_64:latest
 # FROM docker.io/pypa/manylinux2014_x86_64:latest
 # FROM ghcr.io/pypa/manylinux2014_x86_64:latest
 
-# 安装系统层面的编译依赖，不包含 MPI 运行时
+# 安装系统层面的编译依赖，包含OpenMPI运行时
 RUN yum install -y --setopt=keepcache=0 \
         gcc-gfortran \
         openblas-devel \
         arpack-devel \
+        openmpi-devel \
         && yum clean all -y \
         && rm -rf /var/cache/yum
+
+# 配置OpenMPI环境
+ENV OMPI_MCA_plm=isolated \
+    OMPI_MCA_btl_vader_single_copy_mechanism=none \
+    OMPI_MCA_rmaps_base_oversubscribe=yes
 
 # 为容器里所有 CPython 版本预装 Python 构建依赖
 # 这样 cibuildwheel 就不需要重新下载这些包了
