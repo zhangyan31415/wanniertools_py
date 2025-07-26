@@ -247,7 +247,7 @@ if fortran_compiler.get_id().startswith('intel')
     fortran_args += ['-fpp']
   endif
 else
-  fortran_args += ['-cpp', '-fallow-argument-mismatch']
+  fortran_args += ['-cpp', '-fallow-argument-mismatch', '-fallow-invalid-boz']
 endif
 
 # Add MPI preprocessor definition if MPI is found

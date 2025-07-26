@@ -51,7 +51,14 @@ copy "%SYSTEMROOT_DLL%\msmpi.dll" . >nul
 gendef msmpi.dll
 dlltool -d msmpi.def -l libmsmpi.a -D msmpi.dll
 del msmpi.lib msmpi.dll msmpi.def
-echo Created libmsmpi.a in C:\msys64\ucrt64\lib
+
+rem Verify libmsmpi.a was created successfully
+if exist libmsmpi.a (
+    echo Created libmsmpi.a in C:\msys64\ucrt64\lib
+    dir libmsmpi.a
+) else (
+    echo [ERROR] Failed to create libmsmpi.a
+)
 goto msmpi_lib_done
 
 :msmpi_lib_not_found
