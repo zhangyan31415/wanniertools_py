@@ -38,22 +38,36 @@ def inject_msmpi_dll(dest_dir):
         (mpi_dir / 'lib').mkdir(parents=True, exist_ok=True)
         (mpi_dir / 'include').mkdir(parents=True, exist_ok=True)
         
-        # Microsoft MPI DLL路径查找
-        # 先检查最常见的位置：Windows System32
-        msmpi_dll_file = Path('C:/Windows/System32/msmpi.dll')
-        if not msmpi_dll_file.exists():
-            # 然后检查 Program Files 位置
-            msmpi_dll_file = Path('C:/Program Files/Microsoft MPI/Bin/msmpi.dll')
-            if not msmpi_dll_file.exists():
-                msmpi_dll_file = Path('C:/Program Files (x86)/Microsoft MPI/Bin/msmpi.dll')
+        # 查找并复制 msmpi.dll
+        msmpi_dll_path = Path('C:/Windows/System32/msmpi.dll')
+        if not msmpi_dll_path.exists():
+            for p in [
+                Path('C:/Program Files/Microsoft MPI/Bin/msmpi.dll'),
+                Path('C:/Program Files (x86)/Microsoft MPI/Bin/msmpi.dll')
+            ]:
+                if p.exists():
+                    msmpi_dll_path = p
+                    break
         
-        print(f"Using MS-MPI DLL from: {msmpi_dll_file.parent}")
-        if msmpi_dll_file.exists():
-            shutil.copy2(msmpi_dll_file, mpi_dir / 'bin')
-            print(f"Copied msmpi.dll")
+        if msmpi_dll_path.exists():
+            print(f"Found msmpi.dll at: {msmpi_dll_path}")
+            shutil.copy2(msmpi_dll_path, mpi_dir / 'bin')
+            print("Copied msmpi.dll")
         else:
-            print("[WARNING] msmpi.dll not found")
+            print("[ERROR] msmpi.dll not found in any standard location.")
             return False
+            
+        # 查找并复制 mpiexec.exe
+        mpiexec_path = Path('C:/Program Files/Microsoft MPI/Bin/mpiexec.exe')
+        if not mpiexec_path.exists():
+            mpiexec_path = Path('C:/Program Files (x86)/Microsoft MPI/Bin/mpiexec.exe')
+
+        if mpiexec_path.exists():
+            print(f"Found mpiexec.exe at: {mpiexec_path}")
+            shutil.copy2(mpiexec_path, mpi_dir / 'bin')
+            print("Copied mpiexec.exe")
+        else:
+            print("[WARNING] mpiexec.exe not found, skipping.")
         
         # 重新打包wheel
         with zipfile.ZipFile(wheel_file, 'w', zipfile.ZIP_DEFLATED) as z:

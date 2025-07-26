@@ -32,10 +32,10 @@ pip install -i https://test.pypi.org/simple/ wannier-tools
 * **操作系统**:
 
   * **Linux**: CentOS 7 及以上版本（仅支持串行计算）
-  * **macOS**: 版本 14.6 (Sonoma) 及以上，**仅支持 Apple Silicon (ARM) 芯片**（支持串行和并行计算）
-  * **Windows**: 功能仍在开发中（暂不支持运行）
+  * **macOS**: 版本 14.0 (Sonoma) 及以上，**仅支持 Apple Silicon (ARM) 芯片**（支持串行和并行计算）
+  * **Windows**: windows10及以上（暂不支持运行）
 * **Python:** 3.9 - 3.12 版本
-* **NumPy:** >= 2.0
+* **NumPy:**
 * **MPI:** 无需额外安装。
 
 ## 使用

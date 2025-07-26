@@ -815,11 +815,13 @@ jobs:
           }
 
           if (Test-Path "WT.out") {
-            Write-Host "--- WT.out (last 20 lines) ---"
-            Get-Content "WT.out" | Select-Object -Last 20
+            Write-Host "--- WT.out (first 30 lines) ---"
+            Get-Content "WT.out" -Head 30
+            Write-Host "--- WT.out (last 30 lines) ---"
+            Get-Content "WT.out" -Tail 30
             Write-Host "-----------------------------"
           } else {
-            Write-Host "[INFO] WT.out file not found, cannot display last 20 lines."
+            Write-Host "[INFO] WT.out file not found, cannot display content."
           }
         env:
           OPENBLAS_NUM_THREADS: 1
