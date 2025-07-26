@@ -131,7 +131,12 @@ Note: For parallel computation, make sure MPI is installed:
 
         # On Linux/macOS, if an mpirun is found, use it
         if mpirun_exe is not None:
-            new_cmd = [mpirun_exe, '-np', str(args.np), sys.executable, '-m', 'wannier_tools.cli', '--no-spawn']
+            new_cmd = [mpirun_exe, '-np', str(args.np)]
+            # Allow oversubscription (CI runners often have limited cores)
+            if not sysname.startswith('windows'):
+                new_cmd.insert(1, '--oversubscribe')
+
+            new_cmd.extend([sys.executable, '-m', 'wannier_tools.cli', '--no-spawn'])
 
             # propagate user-visible CLI args (except -n/--np)
             for flag, val in (('-i', args.input), ('-o', args.output)):
