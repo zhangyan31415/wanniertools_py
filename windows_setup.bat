@@ -68,7 +68,20 @@ if exist "%MSMPI_INC%\mpi.h" (
   rem Create Fortran MPI module file (mpi.mod)
   echo Generating mpi.mod for GFortran...
   cd C:\msys64\ucrt64\include\MPI_SDK_Headers
-  gfortran -c -cpp -fallow-invalid-boz -fno-range-check -D_WIN64 "-DINT_PTR_KIND()=8" mpi.f90
+  
+  rem Try different possible Fortran source file names
+  if exist mpi.f90 (
+    gfortran -c -cpp -fallow-invalid-boz -fno-range-check -D_WIN64 "-DINT_PTR_KIND()=8" mpi.f90
+  ) else if exist mpi.F90 (
+    gfortran -c -cpp -fallow-invalid-boz -fno-range-check -D_WIN64 "-DINT_PTR_KIND()=8" mpi.F90
+  ) else if exist mpif.h (
+    rem If no .f90 file, skip mpi.mod generation and use mpif.h instead
+    echo No mpi.f90 found, will use mpif.h for Fortran compilation
+    goto skip_mod_generation
+  ) else (
+    echo [WARNING] No Fortran MPI source file found. Skipping mpi.mod generation.
+    goto skip_mod_generation
+  )
   
   if exist mpi.mod (
     copy mpi.mod ..\ >nul
@@ -76,7 +89,9 @@ if exist "%MSMPI_INC%\mpi.h" (
   ) else (
     echo [ERROR] Failed to generate mpi.mod.
   )
-  del *.o *.mod
+  del *.o *.mod 2>nul
+  
+  :skip_mod_generation
 ) else (
   echo [WARNING] MPI headers not found in expected SDK location. Cannot configure Fortran MPI modules.
 )
