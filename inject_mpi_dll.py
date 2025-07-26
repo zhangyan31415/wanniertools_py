@@ -62,7 +62,7 @@ def inject_msmpi_dll(dest_dir):
                     arcname = file_path.relative_to(temp_path)
                     z.write(file_path, arcname)
         
-        print(f"✅ MS-MPI DLL injected into {wheel_file.name}")
+        print(f"OK - MS-MPI DLL injected into {wheel_file.name}")
         return True
 
 def show_wheel_contents(dest_dir):
