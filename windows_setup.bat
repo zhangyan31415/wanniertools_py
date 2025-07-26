@@ -68,7 +68,7 @@ if exist "%MSMPI_INC%\mpi.h" (
   rem Create Fortran MPI module file (mpi.mod)
   echo Generating mpi.mod for GFortran...
   cd C:\msys64\ucrt64\include\MPI_SDK_Headers
-  gfortran -c -cpp -fallow-invalid-boz -fno-range-check -D_WIN64 -DINT_PTR_KIND()=8 mpi.f90
+  gfortran -c -cpp -fallow-invalid-boz -fno-range-check -D_WIN64 "-DINT_PTR_KIND()=8" mpi.f90
   
   if exist mpi.mod (
     copy mpi.mod ..\ >nul
